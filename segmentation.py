@@ -14,6 +14,7 @@ def segmentTableCells(png):
 
 
     image = cv2.imread("images/preprocessed_image.png")
+    image_crop = cv2.imread("images/preprocessed_image.png")
     # image = cv2.GaussianBlur(image, (7, 7), 0)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mask = nump.zeros(gray.shape, nump.uint8)
@@ -67,7 +68,7 @@ def segmentTableCells(png):
     result = cv2.bitwise_and(closex, closey)
 
     _, contour, hierarchy = cv2.findContours(result, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    centroids = []
+    vertices = []
     yvals = []
     for cnt in contour:
         mom = cv2.moments(cnt)
@@ -80,48 +81,48 @@ def segmentTableCells(png):
         # result = cv2.circle(image, (x, y), 10, (0, 0, 255), -1)
         if 55 <= x <= 85:
             yvals.append(y)
-            centroids.append((x, y))
+            vertices.append((x, y))
 
         if 175 <= x <= 215:
-            centroids.append((x, y))
+            vertices.append((x, y))
             # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 505 <= x <= 530:
-            centroids.append((x, y))
+            vertices.append((x, y))
             # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 840 <= x <= 860:
-            centroids.append((x, y))
+            vertices.append((x, y))
             # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 373 <= x <= 390:
-            centroids.append((x, y))
+            vertices.append((x, y))
             # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 673 <= x <= 690:
-            centroids.append((x, y))
+            vertices.append((x, y))
             # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 965 <= x <= 990:
-            centroids.append((x, y))
+            vertices.append((x, y))
            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 1265 <= x <= 1300:
-            centroids.append((x, y))
+            vertices.append((x, y))
            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
 
         if 1550 <= x <= 1600:
-            centroids.append((x, y))
+            vertices.append((x, y))
            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
-    for x in centroids:
+    for x in vertices:
         x1 = x
         init = False
         for y in yvals:
@@ -130,6 +131,7 @@ def segmentTableCells(png):
 
         if init == True:
             result = cv2.circle(image, (x[0], x[1]), 10, (0, 255, 0), -1)
+            init = False
         else:
             del x
 
@@ -137,10 +139,105 @@ def segmentTableCells(png):
     cv2.imshow("A", result)
     cv2.waitKey(0)
 
+    reordered_vertices = []
+    while vertices:
+        reordered_vertices.append(vertices.pop())
 
-def performCharacterSegmentation(image, t_cells, row, col):
+    performCellSegmentation(image_crop, reordered_vertices)
 
-    current_cell = image.crop(t_cells[row][col])
+'''def performCellSegmentation(image, vertices):
+
+    current_cell = []
+    if not vertices:
+        return
+    else:
+        top_left = vertices[0]
+        current_cell.append(vertices.pop(0))
+        crop = cv2.circle(image, top_left, 10, (0, 255, 255), -1)
+        top_right = vertices[0]
+        current_cell.append(vertices.pop(0))
+        crop = cv2.circle(image, top_right, 10, (0, 255, 255), -1)
+
+        bottom_left = None
+
+        for x in vertices:
+            if (top_left[0] - 5) <= x[0] <= (top_left[0] + 5):
+                bottom_left = x
+                crop = cv2.circle(image, bottom_left, 10, (0, 255, 255), -1)
+                current_cell.append(bottom_left)
+                break
+
+        bottom_right = None
+
+        for x in vertices:
+            if (top_right[0] - 5) <= x[0] <= (top_right[0] + 5):
+                bottom_right = x
+                crop = cv2.circle(image, bottom_right, 10, (0, 255, 255), -1)
+                current_cell.append(bottom_right)
+                break
+
+        img = Image.open("images/preprocessed_image.png")
+
+        print(top_left[0])
+        print(bottom_right)
+        crop_image = img.crop((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
+        crop_image.save("crop1.png")
+        # crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("B", crop)
+        cv2.waitKey(0)
+'''
+def performCellSegmentation(image, vertices):
+
+    last = True
+    if not vertices:
+        return
+    else:
+        top_left = vertices[0]
+        vertices.pop(0)
+        crop = cv2.circle(image, top_left, 10, (0, 255, 255), -1)
+        top_right = vertices[0]
+        if 1550 <= top_right[0] <= 1600:
+            vertices.pop(0)
+        else:
+            last = False
+        crop = cv2.circle(image, top_right, 10, (0, 255, 255), -1)
+
+        bottom_left = None
+
+        for x in vertices:
+            if (top_left[0] - 15) <= x[0] <= (top_left[0] + 15):
+                bottom_left = x
+                crop = cv2.circle(image, bottom_left, 10, (0, 255, 255), -1)
+                break
+
+        bottom_right = None
+
+        for x in vertices:
+            if last == False:
+                last = True
+                continue
+
+            if (top_right[0] - 15) <= x[0] <= (top_right[0] + 15):
+                bottom_right = x
+                crop = cv2.circle(image, bottom_right, 10, (0, 255, 255), -1)
+                break
+
+        img = Image.open("images/preprocessed_image.png")
+
+        #print(top_left[0])
+        #print(bottom_right)
+        crop_image = img.crop((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
+        crop_image.save(str(top_left[0]) + str(bottom_right) + ".png")
+        # crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("B", crop)
+        cv2.waitKey(0)
+
+        return performCellSegmentation(image, vertices)
+
+
+def performCharacterSegmentation(image, t_cells):
+
+    '''current_cell = image.crop(t_cells[row][col])
     current_cell = current_cell.point(lambda p: p > 200 and 255)
     hist = current_cell.histogram()
     background = None
@@ -167,5 +264,5 @@ def performCharacterSegmentation(image, t_cells, row, col):
 
     test = cv2.imread("images/cellSegmented.jpg")
     cv2.imshow(test)
-    cv2.waitKey(0)
+    cv2.waitKey(0)'''
     return
