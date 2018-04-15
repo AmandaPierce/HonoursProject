@@ -82,55 +82,33 @@ def segmentTableCells(png):
         if 55 <= x <= 85:
             yvals.append(y)
             vertices.append((x, y))
-
-        if 175 <= x <= 215:
+        elif 175 <= x <= 215:
             vertices.append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 505 <= x <= 530:
+        elif 505 <= x <= 530:
             vertices.append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 840 <= x <= 860:
+        elif 840 <= x <= 860:
             vertices.append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 373 <= x <= 390:
+        elif 373 <= x <= 390:
             vertices.append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 673 <= x <= 690:
+        elif 673 <= x <= 690:
             vertices.append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 965 <= x <= 990:
+        elif 965 <= x <= 990:
             vertices.append((x, y))
-           # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 1265 <= x <= 1300:
+        elif 1265 <= x <= 1300:
             vertices.append((x, y))
-           # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
-
-
-        if 1550 <= x <= 1600:
+        elif 1550 <= x <= 1600:
             vertices.append((x, y))
-           # result = cv2.circle(image, (x, y), 10, (0, 255, 255), -1)
 
+    reordered_vertices = []
     for x in vertices:
         x1 = x
         init = False
         for y in yvals:
             if y - 10 <= x1[1] <= y + 20:
                 init = True
-
         if init == True:
             result = cv2.circle(image, (x[0], x[1]), 10, (0, 255, 0), -1)
+            reordered_vertices.append(x)
             init = False
         else:
             del x
@@ -139,53 +117,25 @@ def segmentTableCells(png):
     cv2.imshow("A", result)
     cv2.waitKey(0)
 
-    reordered_vertices = []
-    while vertices:
-        reordered_vertices.append(vertices.pop())
+    vertices = []
+    while reordered_vertices:
+        vertices.append(reordered_vertices.pop())
 
-    performCellSegmentation(image_crop, reordered_vertices)
+    performCellSegmentation(image_crop, vertices)
 
-'''def performCellSegmentation(image, vertices):
+    #iterateTest(image, vertices)
+    return
 
-    current_cell = []
-    if not vertices:
-        return
-    else:
-        top_left = vertices[0]
-        current_cell.append(vertices.pop(0))
-        crop = cv2.circle(image, top_left, 10, (0, 255, 255), -1)
-        top_right = vertices[0]
-        current_cell.append(vertices.pop(0))
-        crop = cv2.circle(image, top_right, 10, (0, 255, 255), -1)
+def iterateTest(image, vertices):
 
-        bottom_left = None
+    crop = cv2.circle(image, vertices[0], 10, (0, 255, 255), -1)
+    vertices.pop(0)
+    cv2.imshow("B", crop)
+    cv2.waitKey(0)
+    iterateTest(image, vertices)
+    return
 
-        for x in vertices:
-            if (top_left[0] - 5) <= x[0] <= (top_left[0] + 5):
-                bottom_left = x
-                crop = cv2.circle(image, bottom_left, 10, (0, 255, 255), -1)
-                current_cell.append(bottom_left)
-                break
 
-        bottom_right = None
-
-        for x in vertices:
-            if (top_right[0] - 5) <= x[0] <= (top_right[0] + 5):
-                bottom_right = x
-                crop = cv2.circle(image, bottom_right, 10, (0, 255, 255), -1)
-                current_cell.append(bottom_right)
-                break
-
-        img = Image.open("images/preprocessed_image.png")
-
-        print(top_left[0])
-        print(bottom_right)
-        crop_image = img.crop((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-        crop_image.save("crop1.png")
-        # crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
-        cv2.imshow("B", crop)
-        cv2.waitKey(0)
-'''
 def performCellSegmentation(image, vertices):
 
     last = True
@@ -227,7 +177,7 @@ def performCellSegmentation(image, vertices):
         #print(top_left[0])
         #print(bottom_right)
         crop_image = img.crop((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
-        crop_image.save(str(top_left[0]) + str(bottom_right) + ".png")
+        crop_image.save(str(top_left[0]) + str(bottom_right[0]) + ".png")
         # crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
         cv2.imshow("B", crop)
         cv2.waitKey(0)
