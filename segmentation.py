@@ -121,15 +121,29 @@ def segmentTableCells(png):
     while reordered_vertices:
         vertices.append(reordered_vertices.pop())
 
-    performCellSegmentation(image_crop, vertices)
+    temp = []
+    reordered_vertices = []
+    for x in vertices:
+        if 1550 <= x[0] <= 1600:
+            temp.append(x)
+            for i in range(len(temp)):
+                min_val = min(temp[i:])
+                min_index = temp[i:].index(min_val)
+                temp[i + min_index] = temp[i]
+                temp[i] = min_val
+            while temp:
+                reordered_vertices.append(temp.pop(0))
+        else:
+            temp.append(x)
 
-    #iterateTest(image, vertices)
+    performCellSegmentation(image_crop, reordered_vertices)
+    # iterateTest(image, reordered_vertices)
     return
 
 def iterateTest(image, vertices):
 
     crop = cv2.circle(image, vertices[0], 10, (0, 255, 255), -1)
-    vertices.pop(0)
+    print(vertices.pop(0))
     cv2.imshow("B", crop)
     cv2.waitKey(0)
     iterateTest(image, vertices)
