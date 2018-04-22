@@ -1,7 +1,7 @@
 # All methods and functions that have to do with preprocessing the image
 from PIL import Image
 from convertPDFtoJpeg import convertImage
-import pytesseract
+# import pytesseract
 import argparse
 import cv2
 import os
@@ -34,9 +34,8 @@ def getImage():
         final_image = imageSkewNormalization(final_image)
         # image_resize = cv2.resize(final_image, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
         preprocess_filename = writeImageToDisk(final_image)
-        print(preprocess_filename)
+        removePixels()
         return preprocess_filename
-
     else:
        ''' image = cv2.imread(argument["image"])
         final_image = greyscaleImage(image)
@@ -46,8 +45,7 @@ def getImage():
         final_image = sharpenImage(final_image)
         final_image = imageSkewNormalization(final_image)
         writeImageToDisk(final_image)'''
-
-    return
+       return "AAAA"
 
 
 def sharpenImage(image):
@@ -84,7 +82,7 @@ def writeImageToDisk(grey_image):
     filename = "images/preprocessed_image.png".format(os.getpid())
     # image_resize = cv2.resize(grey_image2, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
     cv2.imwrite(filename, grey_image)
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
     return filename
 
 
@@ -318,11 +316,19 @@ def cropImageToTextPortion(input_path, output_path):
 
     return
 
+def removePixels():
+    image = cv2.imread("images/preprocessed_image.png", 0)
+    _, b_and_w = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
 
+    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(b_and_w, 4, cv2.CV_32S)
+    sizes = stats[1:, -1]
+    img2 = nump.zeros((labels.shape), nump.uint8)
 
+    for i in range(0, nlabels - 1):
+        if sizes[i] >= 50:
+            img2[labels == i + 1] = 255
 
+    res = cv2.bitwise_not(img2)
 
-
-
-
-
+    cv2.imwrite('images/preprocessed_image.png', res)
+    return

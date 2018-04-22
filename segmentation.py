@@ -144,6 +144,7 @@ def iterateTest(image, vertices):
 
     crop = cv2.circle(image, vertices[0], 10, (0, 255, 255), -1)
     print(vertices.pop(0))
+    crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
     cv2.imshow("B", crop)
     cv2.waitKey(0)
     iterateTest(image, vertices)
@@ -190,43 +191,14 @@ def performCellSegmentation(image, vertices):
 
         #print(top_left[0])
         #print(bottom_right)
-        crop_image = img.crop((top_left[0], top_left[1], bottom_right[0], bottom_right[1]))
+        crop_image = img.crop((top_left[0] + 6, top_left[1] + 6, bottom_right[0] - 6, bottom_right[1] - 6))
         crop_image.save(str(top_left[0]) + str(bottom_right[0]) + ".png")
-        # crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
+        crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
         cv2.imshow("B", crop)
         cv2.waitKey(0)
 
         return performCellSegmentation(image, vertices)
 
-
 def performCharacterSegmentation(image, t_cells):
 
-    '''current_cell = image.crop(t_cells[row][col])
-    current_cell = current_cell.point(lambda p: p > 200 and 255)
-    hist = current_cell.histogram()
-    background = None
-    if hist[0] > hist[255]:
-        background = 0
-    else:
-        background = 255
-
-    pixels = current_cell.load()
-
-    x1, y1 = 0, 0
-    x2, y2 = current_cell.size
-    x2, y2 = x2 - 1, y2 - 1
-    while pixels[x1, y1] != background:
-        x1 += 1
-        y1 += 1
-
-    while pixels[x2, y2] != background:
-        x2 -= 1
-        y2 -= 1
-
-    current_cell = current_cell.crop((x1, y1, x2, y2))
-    current_cell.save("images/cellSegmented.png", "PNG")
-
-    test = cv2.imread("images/cellSegmented.jpg")
-    cv2.imshow(test)
-    cv2.waitKey(0)'''
     return
