@@ -12,9 +12,14 @@ VERTICAL_THRESHOLD = 500
 
 def segmentTableCells(png):
 
+    image = Image.open("images/preprocessed_image.png")
+    width, height = image.size
 
-    image = cv2.imread("images/preprocessed_image.png")
-    image_crop = cv2.imread("images/preprocessed_image.png")
+    crop_image = image.crop((0, 1065, width, height))
+    crop_image.save("images/justNumbers.png")
+
+    image = cv2.imread("images/justNumbers.png")
+    image_crop = cv2.imread("images/justNumbers.png")
     # image = cv2.GaussianBlur(image, (7, 7), 0)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mask = nump.zeros(gray.shape, nump.uint8)
@@ -68,7 +73,10 @@ def segmentTableCells(png):
     result = cv2.bitwise_and(closex, closey)
 
     _, contour, hierarchy = cv2.findContours(result, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    vertices = []
+
+    vertices_multi = []
+    for x in range(0, 7):
+        vertices_multi.append([])
     yvals = []
     for cnt in contour:
         mom = cv2.moments(cnt)
@@ -81,123 +89,76 @@ def segmentTableCells(png):
         # result = cv2.circle(image, (x, y), 10, (0, 0, 255), -1)
         if 55 <= x <= 85:
             yvals.append(y)
-            vertices.append((x, y))
-        elif 175 <= x <= 215:
-            vertices.append((x, y))
+            vertices_multi[0].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
+        elif 190 <= x <= 215:
+            vertices_multi[1].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
         elif 505 <= x <= 530:
-            vertices.append((x, y))
+            vertices_multi[2].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
         elif 840 <= x <= 860:
-            vertices.append((x, y))
-        elif 373 <= x <= 390:
-            vertices.append((x, y))
-        elif 673 <= x <= 690:
-            vertices.append((x, y))
+            vertices_multi[3].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
         elif 965 <= x <= 990:
-            vertices.append((x, y))
-        elif 1265 <= x <= 1300:
-            vertices.append((x, y))
+            vertices_multi[4].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
+        elif 1265 <= x <= 1320:
+            vertices_multi[5].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
         elif 1550 <= x <= 1600:
-            vertices.append((x, y))
+            vertices_multi[6].append((x, y))
+            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
+
+    '''elif 175 <= x <= 215:
+          elif 673 <= x <= 690:
+          elif 373 <= x <= 390'''
 
     reordered_vertices = []
-    for x in vertices:
-        x1 = x
+    for x in range(0, 7):
+        reordered_vertices.append([])
+
+    row_counter = 0
+    for row in vertices_multi:
         init = False
-        for y in yvals:
-            if y - 10 <= x1[1] <= y + 20:
-                init = True
-        if init == True:
-            result = cv2.circle(image, (x[0], x[1]), 10, (0, 255, 0), -1)
-            reordered_vertices.append(x)
-            init = False
-        else:
-            del x
-
-    result = cv2.resize(result, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("A", result)
-    cv2.waitKey(0)
-
-    vertices = []
-    while reordered_vertices:
-        vertices.append(reordered_vertices.pop())
-
-    temp = []
-    reordered_vertices = []
-    for x in vertices:
-        if 1550 <= x[0] <= 1600:
-            temp.append(x)
-            for i in range(len(temp)):
-                min_val = min(temp[i:])
-                min_index = temp[i:].index(min_val)
-                temp[i + min_index] = temp[i]
-                temp[i] = min_val
-            while temp:
-                reordered_vertices.append(temp.pop(0))
-        else:
-            temp.append(x)
+        for column in row:
+            for y in yvals:
+                if y - 10 <= column[1] <= y + 20:
+                    init = True
+            if init:
+                reordered_vertices[row_counter].insert(0, column)
+                init = False
+            else:
+                del column
+        row_counter = row_counter + 1
 
     performCellSegmentation(image_crop, reordered_vertices)
     # iterateTest(image, reordered_vertices)
     return
 
 def iterateTest(image, vertices):
-
-    crop = cv2.circle(image, vertices[0], 10, (0, 255, 255), -1)
-    print(vertices.pop(0))
-    crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("B", crop)
-    cv2.waitKey(0)
-    iterateTest(image, vertices)
+    for row in vertices:
+        for column in row:
+            print(column)
+            crop = cv2.circle(image, column, 10, (0, 255, 255), -1)
+            crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
+            cv2.imshow("B", crop)
+            cv2.waitKey(0)
     return
 
 
 def performCellSegmentation(image, vertices):
 
-    last = True
-    if not vertices:
-        return
-    else:
-        top_left = vertices[0]
-        vertices.pop(0)
-        crop = cv2.circle(image, top_left, 10, (0, 255, 255), -1)
-        top_right = vertices[0]
-        if 1550 <= top_right[0] <= 1600:
-            vertices.pop(0)
-        else:
-            last = False
-        crop = cv2.circle(image, top_right, 10, (0, 255, 255), -1)
-
-        bottom_left = None
-
-        for x in vertices:
-            if (top_left[0] - 15) <= x[0] <= (top_left[0] + 15):
-                bottom_left = x
-                crop = cv2.circle(image, bottom_left, 10, (0, 255, 255), -1)
-                break
-
-        bottom_right = None
-
-        for x in vertices:
-            if last == False:
-                last = True
-                continue
-
-            if (top_right[0] - 15) <= x[0] <= (top_right[0] + 15):
-                bottom_right = x
-                crop = cv2.circle(image, bottom_right, 10, (0, 255, 255), -1)
-                break
-
-        img = Image.open("images/preprocessed_image.png")
-
-        #print(top_left[0])
-        #print(bottom_right)
-        crop_image = img.crop((top_left[0] + 6, top_left[1] + 6, bottom_right[0] - 6, bottom_right[1] - 6))
-        crop_image.save(str(top_left[0]) + str(bottom_right[0]) + ".png")
-        crop = cv2.resize(crop, None, fx=0.20, fy=0.20, interpolation=cv2.INTER_LINEAR)
-        cv2.imshow("B", crop)
-        cv2.waitKey(0)
-
-        return performCellSegmentation(image, vertices)
+    for x in range(0, 3):
+        count_vals = 1
+        for val in vertices[x][:-1]:
+            top_left = val
+            bottom_right = vertices[x+1][count_vals]
+            img = Image.open("images/justNumbers.png")
+            # crop_image = img.crop((top_left[0] - 5, top_left[1] - 5, bottom_right[0] + 5, bottom_right[1] + 5))
+            crop_image = img.crop((top_left[0] + 6, top_left[1] + 6, bottom_right[0] - 5, bottom_right[1] - 5))
+            crop_image.save(str(x) + "_" + str(count_vals - 1) + ".png")
+            count_vals = count_vals + 1
 
 def performCharacterSegmentation(image, t_cells):
 
