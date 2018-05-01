@@ -5,10 +5,7 @@ import subprocess
 import sys
 import glob
 import numpy as nump
-
-# a line has to have at least 300 continuous pixels to be considered a line
-HORIZONTAL_THRESHHOLD = 500
-VERTICAL_THRESHOLD = 500
+from characterSegmentation import individualSegmentation
 
 def segmentTableCells(png):
 
@@ -134,6 +131,7 @@ def segmentTableCells(png):
 
     performCellSegmentation(image_crop, reordered_vertices)
     # iterateTest(image, reordered_vertices)
+    performCharacterSegmentation()
     return
 
 def iterateTest(image, vertices):
@@ -146,7 +144,6 @@ def iterateTest(image, vertices):
             cv2.waitKey(0)
     return
 
-
 def performCellSegmentation(image, vertices):
 
     for x in range(0, 3):
@@ -157,9 +154,29 @@ def performCellSegmentation(image, vertices):
             img = Image.open("images/justNumbers.png")
             # crop_image = img.crop((top_left[0] - 5, top_left[1] - 5, bottom_right[0] + 5, bottom_right[1] + 5))
             crop_image = img.crop((top_left[0] + 6, top_left[1] + 6, bottom_right[0] - 5, bottom_right[1] - 5))
-            crop_image.save(str(x) + "_" + str(count_vals - 1) + ".png")
+            crop_image.save("images/" + str(x) + "_" + str(count_vals - 1) + ".png")
             count_vals = count_vals + 1
 
-def performCharacterSegmentation(image, t_cells):
+def performCharacterSegmentation():
+    image = cv2.imread("images/1_0.png")
+    grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    kernel = nump.ones((3, 3), nump.uint8)
+    grey_image = cv2.morphologyEx(grey_image, cv2.MORPH_OPEN, kernel)
+    grey_image = cv2.morphologyEx(grey_image, cv2.MORPH_CLOSE, kernel)
+    grey_image = cv2.bitwise_not(grey_image)
 
+    grey_image2 = cv2.threshold(grey_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    XYcoordinates = nump.column_stack(nump.where(grey_image2 > 0))
+    angle = cv2.minAreaRect(XYcoordinates)[-1]
+    if (angle < -45):
+        angle = (angle + 90) * -1
+    else:
+        angle = angle * -1
+
+    (height, width) = image.shape[:2]
+    center = (width // 2, height // 2)
+    r_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(image, r_matrix, (width, height), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    cv2.imwrite("testing.png", rotated)
+    individualSegmentation()
     return
