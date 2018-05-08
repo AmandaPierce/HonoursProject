@@ -1,78 +1,95 @@
-import numpy as nump
+# Adapted from Deep MNIST for Experts
+
 import tensorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
 
-tf.logging.set_verbosity(tf.logging.INFO)
+def weight_variable(shape):
+  initial = tf.truncated_normal(shape, stddev=0.1)
+  return tf.Variable(initial)
 
-def cnn_model_fn(features, labels, mode):
+def bias_variable(shape):
+  initial = tf.constant(0.1, shape=shape)
+  return tf.Variable(initial)
 
-    # 28x28 pixel images with only one channel, batch size dynamically calculated (-1) based on inputs in x
-    input_layer = tf.reshape(features["x"], [-1, 28, 28, 1])
+def convolution2d(image, weight):
+  return tf.nn.conv2d(image, weight, strides=[1, 1, 1, 1], padding='SAME')
 
-    # Apply 32 5x5 filters to the input layer, ReLU activation is applied
-    conv_layer_one = tf.layers.conv2d(
-        inputs=input_layer, filters=32, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
-    # Attach layer that performs max pooling using a 2x2 filter
-    pool_layer_one = tf.layers.max_pooling2d(inputs=conv_layer_one, pool_size=[2, 2], strides=2)
+def max_pool(x):
+  return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
-    # 64 5x5 filters with ReLU activation and second pooling layer
-    conv_layer_two = tf.layers.conv2d(
-        inputs=pool_layer_one, filters=64, kernel_size=[5, 5], padding="same", activation=tf.nn.relu)
-    pool_layer_two = tf.layers.max_pooling2d(inputs=conv_layer_two, pool_size=[2, 2], strides=2)
 
-    # Flatten tensor to only 2 dimensions, pool_layer_two width * pool_layer_two height * 64 channels
-    pool_layer_two_dense = tf.reshape(pool_layer_two, [-1, 7 * 7 * 64])
+def build_cnn():
+    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+    #  interleave operations which build a computation graph with operations(TensorFlow operations arranged into a graph of nodes) that run the graph.
+    sess = tf.InteractiveSession()
 
-    # Dense layer with 1024 neurons
-    dense = tf.layers.dense(inputs=pool_layer_two_dense, units=1024, activation=tf.nn.relu)
+    input_image = tf.placeholder(tf.float32, shape=[None, 784])
+    # Each row is a 10-dimensional vector indicating the digit class(0-9) the MNIST image belongs to
+    target_output_class = tf.placeholder(tf.float32, shape=[None, 10])
 
-    #Dropout only if training is true
-    dropout = tf.layers.dropout(
-        inputs=dense, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    current_image = tf.reshape(input_image, [-1, 28, 28, 1])
 
-    # For digits we only need 10 (0-9) final layers
-    logits = tf.layers.dense(inputs=dropout, units=10)
+    final_conv, keep_prob = cnn_model(current_image)
+    # Loss function
+    cross_entropy = -tf.reduce_sum(target_output_class * tf.log(final_conv))
 
-    # tf.argmax is the element in the corresponding row of the logits tensor with the highest raw value
-    predictions = {
-        "classes": tf.argmax(input=logits, axis=1),
-        "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-    }
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+    correct_prediction = tf.equal(tf.argmax(final_conv, 1), tf.argmax(target_output_class, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    saver = tf.train.Saver()
+    sess.run(tf.initialize_all_variables())
+    for i in range(5000):
+        batch = mnist.train.next_batch(50)
+        if i % 100 == 0:
+            train_accuracy = accuracy.eval(feed_dict={
+                input_image: batch[0], target_output_class: batch[1], keep_prob: 1.0})
+            print("step %d, training accuracy %g" % (i, train_accuracy))
+        train_step.run(feed_dict={input_image: batch[0], target_output_class: batch[1], keep_prob: 0.5})
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-        train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    save_path = saver.save(sess, "C:/Users/Amanda/PycharmProjects/jaarProjek/cnn_trainingModel.ckpt")
+    print("Model saved in file: ", save_path)
 
-    eval_metric_ops = {
-        "accuracy": tf.metrics.accuracy(labels=labels, predictions=predictions["classes"])
-    }
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+    print("test accuracy %g" % accuracy.eval(feed_dict={
+        input_image: mnist.test.images, target_output_class: mnist.test.labels, keep_prob: 1.0}))
 
-def main(unused_argv):
-    mnist = tf.contrib.learn.datasets.load_dataset("mnist")
-    train_data = mnist.train.images
-    train_labels = nump.asarray(mnist.train.labels, dtype=np.int32)
-    eval_data = mnist.test.images
-    eval_labels = nump.asarray(mnist.test.labels, dtype=np.int32)
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn, model_dir="/temp/mnist_convnet_model")
 
-    tensors_to_log = {"probabilities": "softmax_tensor"}
-    logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=50)
+def cnn_model(img):
 
-    train_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": train_data}, y=train_labels, batch_size=100, num_epochs=None, shuffle=True)
+    current_image = tf.reshape(img, [-1, 28, 28, 1])
 
-    mnist_classifier.train(input_fn=train_input_fn, steps=20000, hooks=[logging_hook])
+    # 32 features for each 5x5 patch
+    weight_conv1 = weight_variable([5, 5, 1, 32])
+    bias_conv1 = bias_variable([32])
 
-    eval_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": eval_data}, y=eval_labels, num_epochs=1, shuffle=False)
-    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-    print(eval_results)
+    conv1 = tf.nn.relu(convolution2d(current_image, weight_conv1) + bias_conv1)
+    pool1 = max_pool(conv1)
 
-if __name__ == "__main__":
-    tf.app.run()
+    weight_conv2 = weight_variable([5, 5, 32, 64])
+    bias_conv2 = bias_variable([64])
+
+    conv2 = tf.nn.relu(convolution2d(pool1, weight_conv2) + bias_conv2)
+    pool2 = max_pool(conv2)
+
+    weight_fully_connected_layer1 = weight_variable([7 * 7 * 64, 1024])
+    bias_fully_connected_layer1 = bias_variable([1024])
+
+    pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
+    fully_connected_layer1 = tf.nn.relu(
+        tf.matmul(pool2_flat, weight_fully_connected_layer1) + bias_fully_connected_layer1)
+
+    keep_prob = tf.placeholder(tf.float32)
+    fully_connected_layer1_dropout = tf.nn.dropout(fully_connected_layer1, keep_prob)
+
+    weight_fully_connected_layer2 = weight_variable([1024, 10])
+    bias_fully_connected_layer2 = bias_variable([10])
+
+    final_conv = tf.nn.softmax(
+        tf.matmul(fully_connected_layer1_dropout, weight_fully_connected_layer2) + bias_fully_connected_layer2)
+    return final_conv, keep_prob
+
+
+def buildTheCNN():
+    build_cnn()
+
