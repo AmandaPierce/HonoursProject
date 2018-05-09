@@ -3,6 +3,7 @@ from PythonMagick import Image
 
 def convertImage(pdf):
     img = Image()
+    # canvas resolution
     img.density('300')
     img.read(pdf)
     size = "%sx%s" % (img.columns(), img.rows())

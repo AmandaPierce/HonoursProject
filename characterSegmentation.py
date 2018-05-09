@@ -1,17 +1,15 @@
 import cv2
-import numpy as nump
 from PIL import Image
 
-def individualSegmentation():
-    original_image = cv2.imread('testing.png')
-    kernel = nump.ones((5, 5), nump.uint8)
+def individualSegmentation(image_path):
+    original_image = cv2.imread(image_path)
     grey_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
     thresh = cv2.threshold(grey_image, 0, 255, cv2.THRESH_OTSU)[1]
     bw_original = cv2.bitwise_not(thresh)
     bw_skeleton = thinningAlgorithm(bw_original)
     cv2.imwrite("images/skeleton.png", bw_skeleton)
     im = cv2.imread("images/skeleton.png")
-    segmentationOfCharacters(im)
+    segmentationOfCharacters(image_path, im)
 
 def getNeighbours(x, y, image):
     x_1, y_1, x1, y1 = x - 1, y - 1, x + 1, y + 1
@@ -23,6 +21,7 @@ def transitions(neighbours):
     n = neighbours + neighbours[0:1]
     return sum((n1, n2) == (0, 255) for n1, n2 in zip(n, n[1:]))
 
+# Zhang-Suen thinning algorithm
 def thinningAlgorithm(image):
     thinned_image = image.copy()
     changing1 = changing2 = 1
@@ -49,7 +48,7 @@ def thinningAlgorithm(image):
             thinned_image[x][y] = 0
     return thinned_image
 
-def segmentationOfCharacters(image):
+def segmentationOfCharacters(image_file ,image):
     image_segmented = image.copy()
     letter_coordinates_vertical = []
     rows, columns = image_segmented.shape[:2]
@@ -68,12 +67,15 @@ def segmentationOfCharacters(image):
         elif total <= 0:
             add_the_coordinate = False
 
+    val_added = []
     counter = 0
     for x in letter_coordinates_vertical:
         # crop = cv2.line(image, (x[0], 0), (x[len(x) - 1], rows - 1), (255, 255, 0), 1)
-        img = Image.open("testing.png")
-        crop = img.crop((x[0], 0, x[len(x) - 1], rows - 1))
-        crop.save("images/testing_" + str(counter) + ".png")
+        img = Image.open(image_file)
+        crop = img.crop((x[0] - 5, 0, x[len(x) - 1] + 5, rows - 1))
+        print( image_file[15:-4])
+        crop.save("images/character/" + image_file[15:-4] + "_" + str(counter) + ".png")
+        val_added.append("images/character/" + image_file[15:-4] + "_" + str(counter) + ".png")
         counter = counter + 1
 
     letter_coordinates_horizontal = []
@@ -84,7 +86,7 @@ def segmentationOfCharacters(image):
             total2 = total2 + sum(image_segmented[x][y])
 
         if total2 > 0 and add_the_coordinate is False:
-            #letter_coordinates_horizontal.append([])
+            # letter_coordinates_horizontal.append([])
             letter_coordinates_horizontal.append(x)
             add_the_coordinate = True
         elif total2 > 0 and add_the_coordinate:
@@ -92,14 +94,14 @@ def segmentationOfCharacters(image):
         elif total2 <= 0:
             add_the_coordinate = False
 
-    img = Image.open("images/testing_0.png")
-    width, height = img.size
-    crop = img.crop((0, letter_coordinates_horizontal[0], width - 1, height - 1))
-    crop.save("images/testing_0.png")
 
-    img = Image.open("images/testing_1.png")
-    width, height = img.size
-    crop = img.crop((0, letter_coordinates_horizontal[0], width - 1, height - 1))
-    crop.save("images/testing_1.png")
+    for j in val_added:
+        img = Image.open(j)
+        width, height = img.size
+        cropp = img.crop((0, letter_coordinates_horizontal[0] - 5, width - 1, letter_coordinates_horizontal[len(letter_coordinates_horizontal) - 1]))
+        cropp.save(j)
+
+    val_added = None
+    return
 
 

@@ -1,12 +1,13 @@
+# cropImageToTextPortion adopeted from http://www.danvk.org/2015/01/07/finding-blocks-of-text-in-an-image-using-python-opencv-and-numpy.html
 # All methods and functions that have to do with preprocessing the image
 from PIL import Image
 from convertPDFtoJpeg import convertImage
-# import pytesseract
 import argparse
 import cv2
 import os
 import numpy as nump
 from scipy.ndimage.filters import rank_filter
+
 
 def startImagePreprocessing():
     getImage()
@@ -23,15 +24,37 @@ def getImage():
         # image = cv2.imread(jpg)
         # print(pdf)
         # print(jpg)
+        # For cropping to just the table
         png = jpg.replace('.jpg', '.png')
         cropImageToTextPortion(jpg, png)
         image = cv2.imread(png)
+        image_resize = cv2.resize(image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("Image from pdf", image_resize)
+        cv2.waitKey(0)
         final_image = greyscaleImage(image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("Gray scaled image", image_resize)
+        cv2.waitKey(0)
         final_image = contrastAdjustImage(final_image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("Contrast Adjusted image", image_resize)
+        cv2.waitKey(0)
         final_image = smoothingImage(final_image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("Smoothed image", image_resize)
+        cv2.waitKey(0)
         final_image = threshholdImage(final_image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("thresholded image", image_resize)
+        cv2.waitKey(0)
         final_image = sharpenImage(final_image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("sharpened image", image_resize)
+        cv2.waitKey(0)
         final_image = imageSkewNormalization(final_image)
+        image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+        cv2.imshow("skew normalized image", image_resize)
+        cv2.waitKey(0)
         # image_resize = cv2.resize(final_image, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
         preprocess_filename = writeImageToDisk(final_image)
         removePixels()
@@ -49,6 +72,7 @@ def getImage():
 
 
 def sharpenImage(image):
+    # sharpen to enhance definition of edges
     kernel = nump.array([[-1, -1, -1, -1, -1],
                          [-1, 2, 2, 2, -1],
                          [-1, 2, 8, 2, -1],
@@ -69,6 +93,7 @@ def greyscaleImage(image):
 
 
 def smoothingImage(grey_image):
+    # Edge-preserving, and noise-reducing smoothing filter
     blur = cv2.bilateralFilter(grey_image, 9, 75, 75)
     return blur
 
@@ -88,8 +113,10 @@ def writeImageToDisk(grey_image):
 
 def imageSkewNormalization(image):
     colourflip_image = cv2.bitwise_not(image)
-    thresh_image = cv2.adaptiveThreshold(colourflip_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    thresh_image = cv2.adaptiveThreshold(
+        colourflip_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 
+    # Take a sequence of 1-D arrays and stack them as columns to make a single 2-D array
     XYcoordinates = nump.column_stack(nump.where(thresh_image > 0))
     angle = cv2.minAreaRect(XYcoordinates)[-1]
     if(angle < -45):
@@ -112,7 +139,7 @@ def scaleImage(image, dimension=2048):
 
     # Return if scale is already 1 or smaller
     if max(width, height) <= dimension:
-        return 1.0, image  # Return if scale is already 1 or smaller
+        return 1.0, image
     else:
         scale = 1.0 * dimension / max(width, height)  # Get scale value and rescale image
         scaled_image = image.resize((int(width * scale), int(height * scale)), Image.ANTIALIAS)
@@ -132,7 +159,7 @@ def dilateForComponents(edges, val, iterations):
 
 def findComponents(edges):
     #dilate image and return contours of components
-    count = 21
+    count = 17
     n = 1
     while count > 16:
         n += 1
@@ -258,10 +285,10 @@ def ExpandContour(crop, contours, edges, b_contour, pad_px=15):
 def cropImageToTextPortion(input_path, output_path):
 
     image_without_mod = Image.open(input_path)
-
+    im22 = cv2.imread(input_path)
     scale, image = scaleImage(image_without_mod)
 
-    # Maybe leave out converting to array
+    # Canny edge detection of image
     edges = cv2.Canny(nump.asarray(image), 100, 200)
 
     _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -270,9 +297,10 @@ def cropImageToTextPortion(input_path, output_path):
     borders = []
     area = edges.shape[0] * edges.shape[1]
     for i, j in enumerate(contours):
-        x, y, w, h = cv2.boundingRect(j)
-        if w * h > 0.5 * area:
-            borders.append((i, x, y, x + w - 1, y + h - 1))
+        # x and y is top-left coordinate
+        x, y, width, height = cv2.boundingRect(j)
+        if width * height > 0.5 * area:
+            borders.append((i, x, y, x + width - 1, y + height - 1))
 
     borders.sort(
         key=lambda i_x1_y1_x2_y2: (i_x1_y1_x2_y2[3] - i_x1_y1_x2_y2[1]) * (i_x1_y1_x2_y2[4] - i_x1_y1_x2_y2[2]))
@@ -285,7 +313,7 @@ def cropImageToTextPortion(input_path, output_path):
         degrees = r[2]
         # Use bounding box if not close to right angle else use rectangle
         if min(degrees % 90, 90 - (degrees % 90)) <= 10.0:
-            box = cv2.cv.BoxPoints(r)
+            box = cv2.BoxPoints(r)
             box = nump.int0(box)
             cv2.drawContours(contour_image, [box], 0, 255, -1)
             cv2.drawContours(contour_image, [box], 0, 0, 4)
@@ -317,18 +345,22 @@ def cropImageToTextPortion(input_path, output_path):
     return
 
 def removePixels():
-    image = cv2.imread("images/preprocessed_image.png", 0)
-    _, b_and_w = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
+    image = cv2.imread("images/preprocessed_image.png")
+    grey_image = greyscaleImage(image)
+    _, b_and_w = cv2.threshold(grey_image, 127, 255, cv2.THRESH_BINARY_INV)
+
 
     nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(b_and_w, 4, cv2.CV_32S)
     sizes = stats[1:, -1]
-    img2 = nump.zeros((labels.shape), nump.uint8)
+    img2 = nump.zeros(labels.shape, nump.uint8)
 
     for i in range(0, nlabels - 1):
         if sizes[i] >= 50:
             img2[labels == i + 1] = 255
 
-    res = cv2.bitwise_not(img2)
-
-    cv2.imwrite('images/preprocessed_image.png', res)
+        final_image = cv2.bitwise_not(img2)
+    image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+    cv2.imshow("Pixels removed image", image_resize)
+    cv2.waitKey(0)
+    cv2.imwrite('images/preprocessed_image.png', final_image)
     return
