@@ -40,7 +40,7 @@ def build_cnn():
 
     saver = tf.train.Saver()
     sess.run(tf.initialize_all_variables())
-    for i in range(5000):
+    for i in range(10000):
         batch = mnist.train.next_batch(50)
         if i % 100 == 0:
             train_accuracy = accuracy.eval(feed_dict={
@@ -92,4 +92,6 @@ def cnn_model(img):
 
 def buildTheCNN():
     build_cnn()
+
+buildTheCNN()
 

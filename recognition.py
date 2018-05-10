@@ -6,13 +6,13 @@ import numpy as np
 import imutils
 import cv2
 
-def predictCharacters():
-    centeredIm = imageCanvasCentering()
+def predictCharacters(filename):
+    centeredIm = imageCanvasCentering(filename)
     p = predict(centeredIm)
     print((p[0]))
 
-def imageCanvasCentering():
-    im = Image.open("images/testing_1.png").convert('L')
+def imageCanvasCentering(filename):
+    im = Image.open(filename).convert('L')
     width = float(im.size[0])
     height = float(im.size[1])
     new_image = Image.new('L', (28, 28), (255))
