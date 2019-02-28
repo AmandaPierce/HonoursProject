@@ -1,31 +1,34 @@
 # cropImageToTextPortion adopeted from http://www.danvk.org/2015/01/07/finding-blocks-of-text-in-an-image-using-python-opencv-and-numpy.html
 # All methods and functions that have to do with preprocessing the image
 from PIL import Image
-from convertPDFtoJpeg import convertImage
+from services import pdfConversionService
 import argparse
-import cv2
+#import cv2
 import os
-import numpy as nump
-from scipy.ndimage.filters import rank_filter
+#import numpy as nump
+#from scipy.ndimage.filters import rank_filter
+
+class preprocessingService:
+
+    pd = pdfConversionService()
+    def __init__(self):
+        self.getImage()
+        return
 
 
-def startImagePreprocessing():
-    getImage()
-    return
+    def getImage(self):  
+        agp = argparse.ArgumentParser()
+        agp.add_argument("-i", "--image", required=True, help="Enter image -i --image where --image is your image")
+        argument = vars(agp.parse_args())
+        if (argument["image"].endswith(".pdf")):
+            convertImagetoPdf(argument["image"])
+        
+    
+    def convertImagetoPdf(self, pdf):
+        convertImage(pdf)
 
-
-def getImage():
-    agp = argparse.ArgumentParser()
-    agp.add_argument("-i", "--image", required=True, help="Enter image -i --image where --image is your image")
-    argument = vars(agp.parse_args())
-    if (argument["image"].endswith(".pdf")):
-        pdf = argument["image"]
-        jpg = convertImage(pdf)
-        # image = cv2.imread(jpg)
-        # print(pdf)
-        # print(jpg)
-        # For cropping to just the table
-        png = jpg.replace('.jpg', '.png')
+        
+""" png = jpg.replace('.jpg', '.png')
         cropImageToTextPortion(jpg, png)
         image = cv2.imread(png)
         image_resize = cv2.resize(image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
@@ -279,30 +282,29 @@ def ExpandContour(crop, contours, edges, b_contour, pad_px=15):
     if changed:
         return ExpandContour(crop, contours, edges, b_contour, pad_px)
     else:
-        return crop
+        return crop"""
 
-
-def cropImageToTextPortion(input_path, output_path):
+""" def cropImageToTextPortion(input_path, output_path):
 
     image_without_mod = Image.open(input_path)
     im22 = cv2.imread(input_path)
-    scale, image = scaleImage(image_without_mod)
+    scale, image = scaleImage(image_without_mod) """
 
     # Canny edge detection of image
-    edges = cv2.Canny(nump.asarray(image), 100, 200)
+"""   edges = cv2.Canny(nump.asarray(image), 100, 200)
 
     _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+"""
     # Find borders of image
-    borders = []
+"""   borders = []
     area = edges.shape[0] * edges.shape[1]
     for i, j in enumerate(contours):
         # x and y is top-left coordinate
         x, y, width, height = cv2.boundingRect(j)
         if width * height > 0.5 * area:
-            borders.append((i, x, y, x + width - 1, y + height - 1))
+            borders.append((i, x, y, x + width - 1, y + height - 1)) """
 
-    borders.sort(
+"""    borders.sort(
         key=lambda i_x1_y1_x2_y2: (i_x1_y1_x2_y2[3] - i_x1_y1_x2_y2[1]) * (i_x1_y1_x2_y2[4] - i_x1_y1_x2_y2[2]))
 
     b_contour = None
@@ -310,9 +312,9 @@ def cropImageToTextPortion(input_path, output_path):
         b_contour = contours[borders[0][0]]
         contour_image = nump.zeros(edges.shape)
         r = cv2.minAreaRect(b_contour)
-        degrees = r[2]
+        degrees = r[2] """
         # Use bounding box if not close to right angle else use rectangle
-        if min(degrees % 90, 90 - (degrees % 90)) <= 10.0:
+"""   if min(degrees % 90, 90 - (degrees % 90)) <= 10.0:
             box = cv2.BoxPoints(r)
             box = nump.int0(box)
             cv2.drawContours(contour_image, [box], 0, 255, -1)
@@ -324,10 +326,10 @@ def cropImageToTextPortion(input_path, output_path):
 
         edges = nump.minimum(contour_image, edges)
 
-    edges = 255 * (edges > 0).astype(nump.uint8)
+    edges = 255 * (edges > 0).astype(nump.uint8) """
 
     # Remove borders (1px)
-    rows = rank_filter(edges, -4, size=(1, 20))
+""" rows = rank_filter(edges, -4, size=(1, 20))
     cols = rank_filter(edges, -4, size=(20, 1))
     edges = nump.minimum(nump.minimum(edges, rows), cols)
 
@@ -343,8 +345,8 @@ def cropImageToTextPortion(input_path, output_path):
     final_image.save(output_path)
 
     return
-
-def removePixels():
+"""
+""" def removePixels():
     image = cv2.imread("images/preprocessed_image.png")
     grey_image = greyscaleImage(image)
     _, b_and_w = cv2.threshold(grey_image, 127, 255, cv2.THRESH_BINARY_INV)
@@ -363,4 +365,4 @@ def removePixels():
     cv2.imshow("Pixels removed image", image_resize)
     cv2.waitKey(0)
     cv2.imwrite('images/preprocessed_image.png', final_image)
-    return
+    return """
