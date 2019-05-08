@@ -1,15 +1,22 @@
 # Somewhat adopted from https://niektemme.com/2016/02/21/tensorflow-handwriting/
 
 from PIL import Image, ImageFilter
-import tensorflow as tf
-import numpy as np
-import imutils
+from keras.models import load_model
+from keras.datasets import mnist
+import pandas as pd
+import numpy as nump
+# import imutils
 import cv2
+
 
 def predictCharacters(filename):
     centeredIm = imageCanvasCentering(filename)
-    p = predict(centeredIm)
-    print((p[0]))
+    centeredIm = cv2.imread("images/cropped/training_1.png")
+    cv2.imshow('center', centeredIm)
+    cv2.waitKey(0)
+    #p = predict(centeredIm)
+    # print((p[0]))
+
 
 def imageCanvasCentering(filename):
     im = Image.open(filename).convert('L')
@@ -33,11 +40,42 @@ def imageCanvasCentering(filename):
         left = int(round(((28 - w) / 2), 0))
         new_image.paste(img, (left, 4))
 
-    # new_image.save("images/training_1.png")
+    new_image.save("images/cropped/training_1.png")
 
     new_image_list = list(new_image.getdata())
     new_image_list_normal = [(255 - x) * 1.0 / 255.0 for x in new_image_list]
     return new_image_list_normal
+
+
+def predict_character():
+    model = load_model('my_model.h5')
+
+    model.summary()
+
+    img = cv2.imread('images/cropped/training_1.png')
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.bitwise_not(img)
+
+    img = img.reshape(1, 1, 28, 28)
+    img = img / 255.0
+
+    print(img.shape)
+
+    predictions_single = model.predict(img)
+
+    print(predictions_single[0])
+
+    maxElement = nump.amax(predictions_single[0])
+
+    print('Max element from Numpy Array : ', maxElement)
+
+    print(nump.argmax(predictions_single[0]))
+
+    array = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+             'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'd', 'e', 'f', 'g', 'h', 'n', 'q', 'r', 't']
+
+    print(array[nump.argmax(predictions_single[0])])
+
 
 def predict(image_list):
 
@@ -62,7 +100,8 @@ def predict(image_list):
         weight_conv1 = weight_variable([5, 5, 1, 32])
         bias_conv1 = bias_variable([32])
 
-        conv1 = tf.nn.relu(convolution2d(current_image, weight_conv1) + bias_conv1)
+        conv1 = tf.nn.relu(convolution2d(
+            current_image, weight_conv1) + bias_conv1)
         pool1 = max_pool(conv1)
 
         weight_conv2 = weight_variable([5, 5, 32, 64])
@@ -79,7 +118,8 @@ def predict(image_list):
             tf.matmul(pool2_flat, weight_fully_connected_layer1) + bias_fully_connected_layer1)
 
         keep_prob = tf.placeholder(tf.float32)
-        fully_connected_layer1_dropout = tf.nn.dropout(fully_connected_layer1, keep_prob)
+        fully_connected_layer1_dropout = tf.nn.dropout(
+            fully_connected_layer1, keep_prob)
 
         weight_fully_connected_layer2 = weight_variable([1024, 10])
         bias_fully_connected_layer2 = bias_variable([10])
@@ -99,10 +139,8 @@ def predict(image_list):
 
     with tf.Session() as sess:
         sess.run(init_op)
-        saver.restore(sess, "C:/Users/Amanda/PycharmProjects/jaarProjek/cnn_trainingModel.ckpt")
+        saver.restore(
+            sess, "C:/Users/Amanda/PycharmProjects/jaarProjek/cnn_trainingModel.ckpt")
 
         prediction = tf.argmax(final_conv, 1)
         return prediction.eval(feed_dict={input_image: [image_list], keep_prob: 1.0}, session=sess)
-
-
-

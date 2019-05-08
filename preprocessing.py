@@ -20,51 +20,100 @@ def getImage():
     agp.add_argument("-i", "--image", required=True,
                      help="Enter image -i --image where --image is your image")
     argument = vars(agp.parse_args())
+    # If it is a pdf document
     if (argument["image"].endswith(".pdf")):
         pdf = argument["image"]
-        cropPdfToTable("images/image2.jpg", "images/image2.png")
-        # convertImage(pdf)
-        # pathname = "images/"
-        # directory = os.fsencode(pathname)
-        # for file in os.listdir(directory):
-        #     filename = os.fsdecode(file)
-        #     if filename.endswith(".jpg"):
-        #         png = filename.replace('.jpg', '.png')
-        #         cropPdfToTable("images/" + filename, "images/" + png)
+        convertImage(pdf)
+        pathname = "images/"
+        directory = os.fsencode(pathname)
+        for file in os.listdir(directory):
+            filename = os.fsdecode(file)
+            if filename.endswith(".jpg"):
+                png = filename.replace('.jpg', '.png')
+                # Crop to the table
+                cropPdfToTable("images/" + filename, "images/" + png)
+                image = cv2.imread("images/" + png)
+                grey_image = greyscaleImage(image)
+                image_resize = cv2.resize(
+                    grey_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Grey scale image", image_resize)
+                cv2.waitKey(0)
 
-        image = cv2.imread("images/image2.png")
+                C_A_image = contrastAdjustImage(grey_image)
+                image_resize = cv2.resize(
+                    C_A_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Contrast Adjusted image", image_resize)
+                cv2.waitKey(0)
+
+                smoothed_image = smoothingImage(C_A_image)
+                image_resize = cv2.resize(
+                    smoothed_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Smoothed Image", image_resize)
+                cv2.waitKey(0)
+
+                thresh_image = threshholdImage(smoothed_image)
+                image_resize = cv2.resize(
+                    thresh_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Threshold Image", image_resize)
+                cv2.waitKey(0)
+
+                sharp_image = sharpenImage(thresh_image)
+                image_resize = cv2.resize(
+                    sharp_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Sharpened Image", image_resize)
+                cv2.waitKey(0)
+
+                writeImageToDisk(sharp_image, "images/" + png)
+                final_skew__image = imageSkewNormalization("images/" + png)
+                image_resize = cv2.resize(
+                    final_skew__image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Skew Normalized Image", image_resize)
+                cv2.waitKey(0)
+
+                writeImageToDisk(final_skew__image, "images/" + png)
+
+                final_image = removePixels("images/" + png)
+                image_resize = cv2.resize(
+                    final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+                cv2.imshow("Pixels Removed", image_resize)
+                cv2.waitKey(0)
+
+                writeImageToDisk(final_image, "images/" + png)
+        return
+        #image = cv2.imread("images/image2.png")
         # image_resize = cv2.resize(
         #     image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("Image from pdf", image_resize)
         # cv2.waitKey(0)
-        grey_image = greyscaleImage(image)
+        # grey_image = greyscaleImage(image)
         # image_resize = cv2.resize(
         #     grey_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("Gray scaled image", image_resize)
         # cv2.waitKey(0)
-        final_image = contrastAdjustImage(grey_image)
+        # final_image = contrastAdjustImage(grey_image)
         # image_resize = cv2.resize(final_image, None, fx=0.25,
         #                   fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("Contrast Adjusted image", image_resize)
         # cv2.waitKey(0)
-        final_image = smoothingImage(final_image)
+        # final_image = smoothingImage(final_image)
         # image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("Smoothed image", image_resize)
         # cv2.waitKey(0)
-        final_image = threshholdImage(final_image)
+        # final_image = threshholdImage(final_image)
         # image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("thresholded image", image_resize)
         # cv2.waitKey(0)
-        final_image = sharpenImage(final_image)
+        # final_image = sharpenImage(final_image)
         # image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("sharpened image", image_resize)
         # cv2.waitKey(0)
-        final_image = imageSkewNormalization(final_image)
+        # writeImageToDisk(final_image, png)
+        # final_image = imageSkewNormalization('images/image3.png')
+        # writeImageToDisk(final_image, png)
         # image_resize = cv2.resize(final_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
         # cv2.imshow("skew normalized image", image_resize)
-        writeImageToDisk(final_image)
         # removePixels()
-        return
+        # return
     else:
         jpg = argument["image"]
         cropImageToTable(jpg)
@@ -122,46 +171,64 @@ def threshholdImage(grey_image):
     return grey_image2
 
 
-def writeImageToDisk(grey_image):
-    filename = "images/preprocessed_image.png".format(os.getpid())
+def writeImageToDisk(grey_image, fn):
+    filename = fn.format(os.getpid())
     # image_resize = cv2.resize(grey_image2, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
     cv2.imwrite(filename, grey_image)
-    # cv2.waitKey(0)
-    return filename
 
 
-def imageSkewNormalization(image):
-    im = image
+def imageSkewNormalization(fn):
+
+    deskewed_image = cv2.imread(fn)
+    image = cv2.imread(fn)
+    image = greyscaleImage(image)
     image = cv2.bitwise_not(image)
 
+    thresh = cv2.adaptiveThreshold(
+        image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 15, -2)
+
+    contours, hierarchy = cv2.findContours(
+        thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    mask = nump.ones_like(image) * 255
+
+    boxes = []
+
+    for contour in contours:
+        if cv2.contourArea(contour) > 100:
+            hull = cv2.convexHull(contour)
+            cv2.drawContours(mask, [hull], -1, 0, -1)
+            x, y, w, h = cv2.boundingRect(contour)
+            boxes.append((x, y, w, h))
+
+    boxes = sorted(boxes, key=lambda box: box[0])
+    mask = cv2.dilate(mask, nump.ones((5, 5), nump.uint8))
+
+    mask = cv2.bitwise_not(mask)
+
     image_resize = cv2.resize(
-        image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("skew normalized image", image_resize)
+        mask, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
+    cv2.imshow("mask Img", image_resize)
     cv2.waitKey(0)
 
     # Take a sequence of 1-D arrays and stack them as columns to make a single 2-D array
-    XYcoordinates = nump.column_stack(nump.where(image > 0))
+    XYcoordinates = nump.column_stack(nump.where(mask > 0))
 
     # Create bounding box that contains all the coordinates
     angle = cv2.minAreaRect(XYcoordinates)[-1]
+
+    print(angle)
 
     if(angle < -45):
         angle = (angle + 90)
     else:
         angle = angle * -1
 
-    print(angle)
-    angle = angle + 1
-
     (height, width) = image.shape[:2]
     center = (width // 2, height // 2)
     r_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(image, r_matrix, (width, height),
+    rotated = cv2.warpAffine(deskewed_image, r_matrix, (width, height),
                              flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    image_resize = cv2.resize(rotated, None, fx=0.25,
-                              fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("skew normalized image", image_resize)
-    cv2.waitKey(0)
     return rotated
 
 
@@ -326,8 +393,6 @@ def cropPdfToTable(input_path, output_path):
 
     image_without_mod = Image.open(input_path)
     scale, image = scaleImage(image_without_mod)
-    # imgTest = cv2.imread("images/exampleA.jpeg")
-    # imgTest = greyscaleImage(imgTest)
 
     # Canny edge detection of image
     edges = cv2.Canny(nump.asarray(image), 100, 200)
@@ -351,11 +416,6 @@ def cropPdfToTable(input_path, output_path):
     b_contour = None
     if len(borders):
         b_contour = contours[borders[0][0]]
-        cv2.drawContours(imgTest, contours,  borders[0][0], (0, 255, 0), 4)
-        image_resize = cv2.resize(imgTest, None, fx=0.25,
-                                  fy=0.25, interpolation=cv2.INTER_LINEAR)
-        cv2.imshow("contours", image_resize)
-        cv2.waitKey(0)
         contour_image = nump.zeros(edges.shape)
         r = cv2.minAreaRect(b_contour)
         degrees = r[2]
@@ -376,13 +436,6 @@ def cropPdfToTable(input_path, output_path):
 
     contours = findComponents(edges)
 
-    imgTest = cv2.imread("images/image2.jpg")
-    imgTest = cv2.resize(
-        imgTest, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.drawContours(imgTest, contours, -1, (255, 255, 0), 3)
-    cv2.imshow("contours", imgTest)
-    cv2.waitKey(0)
-
     cropped_image = findBestComponentSubset(contours, edges)
 
     cropped_image = ExpandContour(cropped_image, contours, edges, b_contour)
@@ -397,10 +450,11 @@ def cropPdfToTable(input_path, output_path):
 def removePixels(input_path):
     image = cv2.imread(input_path)
     grey_image = greyscaleImage(image)
-    _, b_and_w = cv2.threshold(input_path, 127, 255, cv2.THRESH_BINARY_INV)
+    b_and_w = threshholdImage(grey_image)
+    b_and_w = cv2.bitwise_not(b_and_w)
 
     nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-        input_path, 4, cv2.CV_32S)
+        b_and_w, 4, cv2.CV_32S)
     sizes = stats[1:, -1]
     img2 = nump.zeros(labels.shape, nump.uint8)
 

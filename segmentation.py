@@ -6,66 +6,86 @@ import numpy as nump
 from characterSegmentation import individualSegmentation
 
 
-def segmentTableCells():
+def segment_table_cells():
 
-    image = Image.open("images/preprocessed_image.png")
-    width, height = image.size
-
-    # Just for now to get only the digits
-    #crop_image = image.crop((0, 1065, width, height))
-    image.save("images/justNumbers.png")
-
-    image = cv2.imread("images/justNumbers.png")
-    image_crop = cv2.imread("images/justNumbers.png")
+    image = cv2.imread("images/preDemoimage0.png")
     grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    thresh_image = cv2.adaptiveThreshold(
+        grey_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+    grey_image = cv2.bitwise_not(thresh_image)
+
     mask = nump.zeros(grey_image.shape, nump.uint8)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
 
-    close = cv2.morphologyEx(grey_image, cv2.MORPH_CLOSE, kernel)
-    div = nump.float32(grey_image) / close
+    close_small_gaps = cv2.morphologyEx(grey_image, cv2.MORPH_CLOSE, kernel)
+
+    div = nump.float32(grey_image) / close_small_gaps
 
     result = nump.uint8(cv2.normalize(div, div, 0, 255, cv2.NORM_MINMAX))
 
-    threshold = cv2.adaptiveThreshold(result, 255, 0, 1, 19, 2)
+    threshold = cv2.adaptiveThreshold(
+        result, 255, 0, cv2.THRESH_BINARY, 19, 2)
 
     contours, hierarchy = cv2.findContours(
         threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     kernelx = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 10))
 
-    dx = cv2.Sobel(result, cv2.CV_16S, 1, 0)
-    # scale, calculate, covert to 8 bit
-    dx = cv2.convertScaleAbs(dx)
-    cv2.normalize(dx, dx, 0, 255, cv2.NORM_MINMAX)
-    ret, close = cv2.threshold(dx, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    close = cv2.morphologyEx(close, cv2.MORPH_DILATE, kernelx, iterations=1)
+    derivativex = cv2.Sobel(result, cv2.CV_16S, 1, 0)
+
+    derivativex = cv2.convertScaleAbs(derivativex)
+    cv2.normalize(derivativex, derivativex, 0, 255, cv2.NORM_MINMAX)
+    ret, close = cv2.threshold(
+        derivativex, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    close = cv2.morphologyEx(close, cv2.MORPH_DILATE, kernelx, iterations=2)
 
     contour, hierarchy = cv2.findContours(
         close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     for cnt in contour:
         x, y, w, h = cv2.boundingRect(cnt)
         if h / w > 5:
             cv2.drawContours(close, [cnt], 0, 255, -1)
         else:
             cv2.drawContours(close, [cnt], 0, 0, -1)
+
     close = cv2.morphologyEx(close, cv2.MORPH_CLOSE, None, iterations=2)
+
     closex = close.copy()
 
-    image_resize = cv2.resize(closex, None, fx=1,
-                              fy=1, interpolation=cv2.INTER_LINEAR)
+    kernel_clean = cv2.getStructuringElement(
+        cv2.MORPH_RECT, (1, nump.array(grey_image).shape[1] // 8))
+
+    closex = cv2.erode(closex, kernel_clean, iterations=1)
+
+    closex = cv2.dilate(closex, kernel_clean, iterations=1)
+
+    image_resize = cv2.resize(closex, None, fx=0.25,
+                              fy=0.25, interpolation=cv2.INTER_LINEAR)
+
     cv2.imshow("Vertical lines identified", image_resize)
     cv2.waitKey(0)
 
     kernely = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 2))
-    dy = cv2.Sobel(result, cv2.CV_16S, 0, 2)
-    dy = cv2.convertScaleAbs(dy)
-    cv2.normalize(dy, dy, 0, 255, cv2.NORM_MINMAX)
-    ret, close = cv2.threshold(dy, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    derivativey = cv2.Sobel(result, cv2.CV_16S, 0, 2)
+
+    derivativey = cv2.convertScaleAbs(derivativey)
+
+    cv2.normalize(derivativey, derivativey, 0, 255, cv2.NORM_MINMAX)
+
+    ret, close = cv2.threshold(
+        derivativey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
     close = cv2.morphologyEx(close, cv2.MORPH_DILATE, kernely)
 
     contour, hierarchy = cv2.findContours(
         close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     for cnt in contour:
         x, y, w, h = cv2.boundingRect(cnt)
         if w / h > 5:
@@ -76,117 +96,62 @@ def segmentTableCells():
     close = cv2.morphologyEx(close, cv2.MORPH_DILATE, None, iterations=2)
     closey = close.copy()
 
+    kernel_clean = cv2.getStructuringElement(
+        cv2.MORPH_RECT, (nump.array(grey_image).shape[1] // 8, 1))
+
+    closey = cv2.erode(closey, kernel_clean, iterations=1)
+
+    closey = cv2.dilate(closey, kernel_clean, iterations=1)
+
     image_resize = cv2.resize(closey, None, fx=0.25,
                               fy=0.25, interpolation=cv2.INTER_LINEAR)
     cv2.imshow("Horizontal lines identified", image_resize)
     cv2.waitKey(0)
 
-    result = cv2.bitwise_and(closex, closey)
+    alpha = 0.5
 
-    image_resize = cv2.resize(result, None, fx=0.25,
+    beta = 1.0 - alpha
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+
+    final_image = cv2.addWeighted(
+        closex, alpha, closey, beta, 0.0)
+
+    final_image = cv2.erode(~final_image, kernel, iterations=2)
+
+    (thresh, final_image) = cv2.threshold(
+        final_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
+    image_resize = cv2.resize(final_image, None, fx=0.25,
                               fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("Horizontal lines identified", image_resize)
+    cv2.imshow("Final Table", image_resize)
     cv2.waitKey(0)
 
-    contour, hierarchy = cv2.findContours(
-        result, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(
+        final_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    vertices_multi = []
-    for x in range(0, 7):
-        vertices_multi.append([])
-    yvals = []
-    for cnt in contour:
-        mom = cv2.moments(cnt)
-        if mom["m00"] != 0:
-            x = int(mom["m10"] / mom["m00"])
-            y = int(mom["m01"] / mom["m00"])
-        else:
-            x, y = 0, 0
+    (contours, boundingBoxes) = sort_contours(contours)
 
-        # result = cv2.circle(image, (x, y), 10, (0, 0, 255), -1)
-        if 55 <= x <= 85:
-            yvals.append(y)
-            vertices_multi[0].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 190 <= x <= 215:
-            vertices_multi[1].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 505 <= x <= 530:
-            vertices_multi[2].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 840 <= x <= 860:
-            vertices_multi[3].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 965 <= x <= 990:
-            vertices_multi[4].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 1265 <= x <= 1320:
-            vertices_multi[5].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
-        elif 1550 <= x <= 1600:
-            vertices_multi[6].append((x, y))
-            # result = cv2.circle(image, (x, y), 10, (0, 255, 0), -1)
+    grey_image = cv2.bitwise_not(grey_image)
 
-    '''elif 175 <= x <= 215:
-          elif 673 <= x <= 690:
-          elif 373 <= x <= 390'''
-
-    reordered_vertices = []
-    for x in range(0, 7):
-        reordered_vertices.append([])
-
-    row_counter = 0
-    for row in vertices_multi:
-        init = False
-        for column in row:
-            for y in yvals:
-                if y - 10 <= column[1] <= y + 20:
-                    init = True
-            if init:
-                reordered_vertices[row_counter].insert(0, column)
-                init = False
-            else:
-                del column
-        row_counter = row_counter + 1
-
-    performCellSegmentation(image_crop, reordered_vertices)
-    # iterateTest(image, reordered_vertices)
-    performCharacterSegmentation()
-    return
+    i = 0
+    for c in contours:
+        x, y, w, h = cv2.boundingRect(c)
+        if h > 10:
+            i += 1
+            final_new_img = grey_image[y:y+h, x:x+w]
+            cv2.imwrite('images/final' + str(i) + '.png', final_new_img)
 
 
-def iterateTest(image, vertices):
-    for row in vertices:
-        for column in row:
-            print(column)
-            crop = cv2.circle(image, column, 10, (0, 255, 255), -1)
-            crop = cv2.resize(crop, None, fx=0.20, fy=0.20,
-                              interpolation=cv2.INTER_LINEAR)
-            cv2.imshow("B", crop)
-            cv2.waitKey(0)
-    return
+def sort_contours(contours):
+    i = 1
+    reverse = True
 
+    boundingBoxes = [cv2.boundingRect(c) for c in contours]
+    (contours, boundingBoxes) = zip(*sorted(zip(contours, boundingBoxes),
+                                            key=lambda b: b[1][i], reverse=reverse))
 
-def performCellSegmentation(image, vertices):
-
-    for x in range(0, 3):
-        count_vals = 1
-        naming = 0
-        for val in vertices[x][:-1]:
-            top_left = val
-            bottom_right = vertices[x+1][count_vals]
-            img = Image.open("images/justNumbers.png")
-            # crop_image = img.crop((top_left[0] - 5, top_left[1] - 5, bottom_right[0] + 5, bottom_right[1] + 5))
-            crop_image = img.crop(
-                (top_left[0] + 6, top_left[1] + 6, bottom_right[0] - 5, bottom_right[1] - 5))
-            crop_image.save("images/cropped/" + str(naming) +
-                            "_" + str(x) + ".png")
-            count_vals = count_vals + 1
-            naming = naming + 1
-
-    image = cv2.imread("images/cropped/1_0.png")
-    cv2.imshow("Cropped image", image)
-    cv2.waitKey(0)
+    return (contours, boundingBoxes)
 
 
 def performCharacterSegmentation():

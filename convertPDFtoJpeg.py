@@ -5,5 +5,5 @@ def convertImage(pdf):
     pages = convert_from_path(pdf, 500)
     counter = 0
     for page in pages:
-        page.save('images/image' + str(counter) + '.jpg', 'JPEG')
+        page.save('images/preDemoimage' + str(counter) + '.jpg', 'JPEG')
         counter += 1
