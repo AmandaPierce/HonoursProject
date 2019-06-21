@@ -1,6 +1,6 @@
 # from PIL import Image
 # from preprocessing import startImagePreprocessing
-from pre_processing import process_image
+from pre_processing import process_image, binarization
 # from segmentation import segment_table_cells, performCharacterSegmentation
 # from characterSegmentation import identify_and_extract_characters
 # from keras_cnn import train_cnn
@@ -9,7 +9,8 @@ import os
 import glob
 
 if __name__ == '__main__':
-    process_image("images/exampleA.jpeg")
+    # process_image("images/exampleA.jpeg")
+    binarization("images/exampleA.jpeg")
     # startImagePreprocessing()
     # segment_table_cells()
     # performCharacterSegmentation()
