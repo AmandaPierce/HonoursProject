@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 from scipy.signal import gaussian, convolve2d
 from skimage.filters import threshold_otsu, threshold_niblack, threshold_sauvola
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+# import matplotlib.pyplot as plt
+# import matplotlib.image as mpimg
 from skimage import img_as_float
 import math
 
@@ -36,25 +36,9 @@ def process_image(filename):
 
     im = imageSkewNormalization(filename, image_channels)
 
-    cv2.imwrite("cropped.png", im)
+    cv2.imwrite("images/testing.jpg", im)
 
-    new_image = cv2.imread("cropped.png")
-    grey_image = greyscaleImage(new_image)
-    grey_image = contrastAdjustImage(grey_image)
-    # filtered_image = cv2.adaptiveThreshold(
-    #     grey_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 11)
-    ret, filtered_image = cv2.threshold(grey_image,220,255, cv2.THRESH_BINARY)
-
-    
-    kernel = np.zeros((1, 1), np.uint8)
-    filtered_image = cv2.dilate(filtered_image, kernel, iterations=1)
-
-    filtered_image = sharpenImage(filtered_image)
-
-    image_resize = cv2.resize(
-                    filtered_image, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("C_A image", image_resize)
-    cv2.waitKey(0)
+    #cv2.imwrite(filename, im)
 
 def sharpenImage(image):
     # sharpen to enhance definition of edges
@@ -164,26 +148,26 @@ def background_estimation(image, thresh_image):
 
     padding = cv2.copyMakeBorder(image.copy(),10,10,10,10,cv2.BORDER_CONSTANT)
     thresh = cv2.copyMakeBorder(thresh_image.copy(),10,10,10,10,cv2.BORDER_CONSTANT)
-    rows, cols = image.shape
+    rows, cols = padding.shape
 
     for i in range(rows - 20):
         for j in range(cols - 20):
             k = thresh[i+10,j+10]
-            if(k == 255):
+            if(k == 0):
                 x = i
                 y = j
                 for val in range(20):
-                    top += (image[x,y] * (1 - thresh[x,y]))
+                    top += (padding[x,y] * (1 - thresh[x,y]))
                     bottom += (1 - thresh[x,y])
                     x += 1
                     y += 1
-                background_image[i+10,j+10] = top/bottom
+                background_image[i,j] = top/bottom
                 top = 0
                 bottom = 0
             # else:
             #     thresh[i,j] = 0
-    cv2.imshow("thresh", background_image)
-    cv2.waitKey(0)
+    # cv2.imshow("thresh", background_image)
+    # cv2.waitKey(0)
     return background_image
     
 
@@ -226,16 +210,155 @@ def binarization(filename):
     image = cv2.imread(filename, 0)
 
     image = cv2.bilateralFilter(image, 2, 100, 100)
-    thresh_image = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
+    thresh_image = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,2)
+    # cv2.imshow("AAAAAAAAAAAAAA", thresh_image)
+    # cv2.waitKey(0)
     bg_image = background_estimation(image, thresh_image)
     
     final_image = combining_forground_and_background(image, bg_image, thresh_image)
-    cv2.imshow("The image", final_image)
+    final_image = cv2.bitwise_not(final_image)
+    cv2.imwrite("images/testing.jpg", final_image)
+    # cv2.imshow("The image", final_image)
+    # cv2.waitKey(0)
+
+
+def scaleImage(image, dimension=2048):
+
+    # Gets the width and height of the image
+    height, width = image.shape[:2]
+
+    # Return if scale is already 1 or smaller
+    if max(width, height) <= dimension:
+        return 1.0, image
+    else:
+        # Get scale value and rescale image
+        scale = 1.0 * (dimension / max(width, height))
+        scaled_image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+        return scale, scaled_image
+
+
+def BorderRemovalAlgorithm(input_path):
+    original_image = cv2.imread(input_path)
+    image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+
+    height, width =image.shape[:2]
+
+    third_width = int(width/3)
+
+    segment_x = int(third_width/10)
+    segment_y = int((height/5))
+
+    x = third_width
+    y = 0
+    # average_num_of_pixels = 0
+    # i = 0
+    cv2.imshow("AAA", image)
     cv2.waitKey(0)
 
+    #Left margin
+    while x > segment_x:
+        val = x - segment_x
+        while y <= (height - segment_y):
+            segment_image = image[y:y + segment_y, val:x].copy()
+            nzCount = cv2.countNonZero(segment_image)
+            section_height, section_width = segment_image.shape[:2]
+            totalPixels = section_width * section_height
+            ratio = nzCount/totalPixels
+            # cv2.imshow("Segmented image", segment_image)
+            # cv2.waitKey(0)
+            print(ratio)
+            if(round(ratio,2) > 0.95):
+                x_val = x - segment_x
+                y_val = y
+                while y_val < (y + segment_y):
+                    if(image[y_val, x_val] == 0):
+                        while ((image[y_val, x_val] != 255) and (x_val <= x)):
+                            x_val += 1
 
-    
+                    while(x_val >= 0):
+                        image[y_val, x_val] = 255
+                        x_val -= 1
+                    y_val += 1
+                    x_val = x - segment_x
+            y += segment_y
+        x -= segment_x
+        y = 0
 
-  
+    x = (third_width * 2)
+    y = 0
+
+    #Right margin
+    while x < (width - segment_x):
+        val = x + segment_x
+        while y <= (height - segment_y):
+            segment_image = image[y:y + segment_y, x:val].copy()
+            nzCount = cv2.countNonZero(segment_image)
+            section_height, section_width = segment_image.shape[:2]
+            totalPixels = section_width * section_height
+            ratio = nzCount/totalPixels
+            print(ratio)
+            # cv2.imshow("Segmented image", segment_image)
+            # cv2.waitKey(0)
+            if(round(ratio,2) > 0.98):
+                x_val = x
+                y_val = y
+                while y_val < (y + segment_y):
+                    if(image[y_val, x_val] == 0):
+                        while (image[y_val, x_val] != 255) and (x_val <= x + segment_x):
+                            x_val += 1
+
+                    while(x_val < width):
+                        image[y_val, x_val] = 255
+                        x_val += 1
+                    y_val += 1
+                    x_val = x
+            y += segment_y
+        x += segment_x
+        y = 0
+
+    cv2.imshow("AAA", image)
+    cv2.imwrite("images/testing.png", image)
+    cv2.waitKey(0)
+
+    # while x < (third_width * 2):
+    #     segment_image = image[0:height, x:x + segment].copy()
+    #     nzCount = cv2.countNonZero(segment_image)
+    #     # print(nzCount)
+    #     section_height, section_width = segment_image.shape[:2]
+    #     totalPixels = section_width * section_height
+    #     # print(totalPixels)
+    #     # print(totalPixels - nzCount)
+    #     ratio = (totalPixels-nzCount)/totalPixels
+    #     print(ratio)
+    #     average_num_of_pixels += ratio
+    #     i += 1
+    #     x = x + segment
+    #     cv2.imshow("AAA", segment_image)
+    #     cv2.waitKey(0)
     
-  
+    # x = 0
+    # average_ratio = average_num_of_pixels/i
+
+    # segment_image = image[0:height, x:x + segment].copy()
+    # nzCount = cv2.countNonZero(segment_image)
+    # section_height, section_width = segment_image.shape[:2]
+    # totalPixels = section_width * section_height
+    # ratio = (totalPixels-nzCount)/totalPixels
+    # print(ratio)
+    # cv2.imshow("segment should be removed", segment_image)
+    # cv2.waitKey(0)
+
+    # while x < third_width:
+    #     segment_image = image[0:height, x:x + segment].copy()
+    #     nzCount = cv2.countNonZero(segment_image)
+    #     section_height, section_width = segment_image.shape[:2]
+    #     totalPixels = section_width * section_height
+    #     ratio = nzCount/totalPixels
+    #     print(ratio)
+    #     cv2.imshow("segment should be removed", segment_image)
+    #     cv2.waitKey(0)
+    #     if(ratio < (average_ratio - 0.1)):
+    #         cv2.imshow("segment should be removed", segment_image)
+    #         cv2.waitkey(0)
+    #     x = x + segment
+    
