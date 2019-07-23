@@ -5,33 +5,32 @@ import numpy as nump
 
 def identify_and_extract_characters(filename):
     image = cv2.imread(filename)
-    grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    ret, b_and_w = cv2.threshold(grey_image, 128, 255,
-                                 cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    b_and_w = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    b_and_w = cv2.bitwise_not(b_and_w)
+
+    cv2.imshow('connected components', b_and_w)
+    cv2.waitKey(0)
 
     # find the connected components
-    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(
-        b_and_w, 4, cv2.CV_32S)
+    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(b_and_w, 4, cv2.CV_32S)
     sizes = stats[1:, -1]
     img2 = nump.zeros((image.shape), nump.uint8)
 
-    for i in range(1, nlabels - 1):
-        cv2.rectangle(img2, (stats[i][0], stats[i][1]), (stats[i]
-                                                         [0] + stats[i][2], stats[i][1] + stats[i][3]), (0, 255, 0), 2)
+    for i in range(1, nlabels):
+        cv2.rectangle(img2, (stats[i][0], stats[i][1]), (stats[i][0] + stats[i][2], stats[i][1] + stats[i][3]), (0, 255, 0), 2)
 
-        cv2.circle(img2, (stats[i][0], stats[i][1]), 5, (0, 255, 255), 2)
-        cv2.circle(img2, (stats[i]
-                          [0] + stats[i][2], stats[i][1] + stats[i][3]), 5, (255, 255, 255), 2)
+    #     # cv2.circle(img2, (stats[i][0], stats[i][1]), 5, (0, 255, 255), 2)
+    #     # cv2.circle(img2, (stats[i]
+    #     #                   [0] + stats[i][2], stats[i][1] + stats[i][3]), 5, (255, 255, 255), 2)
 
-        final_new_img = grey_image[stats[i][1]:stats[i][1] +
-                                   stats[i][3], stats[i][0]: stats[i][0] + stats[i][2]]
-        file_name = filename.split('/')
-        cv2.imwrite('images/cropped/char/' + str(i) + '_' +
-                    file_name[len(file_name) - 1], final_new_img)
-        img2[labels == i + 1] = 255
+    #     final_new_img = image[stats[i][1]:stats[i][1] + stats[i][3], stats[i][0]: stats[i][0] + stats[i][2]]
+    #     file_name = filename.split('/')
+    #     # cv2.imwrite('images/cropped/char/' + str(i) + '_' +
+    #     #             file_name[len(file_name) - 1], final_new_img)
+    #     img2[labels == i + 1] = 255
 
-        cv2.imshow('connected components', final_new_img)
-        cv2.waitKey(0)
+    #     cv2.imshow('connected components', img2)
+    #     cv2.waitKey(0)
 
 
 def individualSegmentation(image_path):
@@ -61,8 +60,6 @@ def transitions(neighbours):
     return sum((n1, n2) == (0, 255) for n1, n2 in zip(n, n[1:]))
 
 # Zhang-Suen thinning algorithm
-
-
 def thinningAlgorithm(image):
     thinned_image = image.copy()
     changing1 = changing2 = 1

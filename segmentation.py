@@ -11,141 +11,24 @@ from characterSegmentation import individualSegmentation
 import math
 
 
-def segment_table_cells():
+def segment_table_cells(table_image, original_image, average_table_cell_height, smallest_width):
+    
+    table_image = cv2.bitwise_not(table_image)
 
-    image = cv2.imread("images/testing.jpg")
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    cnts, _ = cv2.findContours(
+        table_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    # thresh_image = cv2.adaptiveThreshold(
-    #     grey_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    (cnts, boundingBoxes) = sort_contours(cnts)
 
-    image = cv2.bitwise_not(image)
+    ordered_cells = sort_cells(cnts)
 
-    mask = np.zeros(image.shape, np.uint8)
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-
-    close_small_gaps = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
-
-    div = np.float32(image) / close_small_gaps
-
-    result = np.uint8(cv2.normalize(div, div, 0, 255, cv2.NORM_MINMAX))
-
-    # threshold = cv2.adaptiveThreshold(
-    #     result, 255, 0, cv2.THRESH_BINARY, 19, 2)
-
-    contours, hierarchy = cv2.findContours(
-        image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    kernelx = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 10))
-
-    derivativex = cv2.Sobel(result, cv2.CV_16S, 1, 0)
-
-    derivativex = cv2.convertScaleAbs(derivativex)
-    cv2.normalize(derivativex, derivativex, 0, 255, cv2.NORM_MINMAX)
-    ret, close = cv2.threshold(
-        derivativex, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    close = cv2.morphologyEx(close, cv2.MORPH_DILATE, kernelx, iterations=2)
-
-    contour, hierarchy = cv2.findContours(
-        close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    for cnt in contour:
-        x, y, w, h = cv2.boundingRect(cnt)
-        if h / w > 5:
-            cv2.drawContours(close, [cnt], 0, 255, -1)
-        else:
-            cv2.drawContours(close, [cnt], 0, 0, -1)
-
-    close = cv2.morphologyEx(close, cv2.MORPH_CLOSE, None, iterations=2)
-
-    closex = close.copy()
-
-    kernel_clean = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (1, np.array(image).shape[1] // 8))
-
-    closex = cv2.erode(closex, kernel_clean, iterations=1)
-
-    closex = cv2.dilate(closex, kernel_clean, iterations=1)
-
-    image_resize = cv2.resize(closex, None, fx=0.25,
-                              fy=0.25, interpolation=cv2.INTER_LINEAR)
-
-    cv2.imshow("Vertical lines identified", image_resize)
-    cv2.waitKey(0)
-
-    kernely = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 2))
-
-    derivativey = cv2.Sobel(result, cv2.CV_16S, 0, 2)
-
-    derivativey = cv2.convertScaleAbs(derivativey)
-
-    cv2.normalize(derivativey, derivativey, 0, 255, cv2.NORM_MINMAX)
-
-    # ret, close = cv2.threshold(
-    #     derivativey, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    close = cv2.morphologyEx(close, cv2.MORPH_DILATE, kernely)
-
-    contour, hierarchy = cv2.findContours(
-        close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    for cnt in contour:
-        x, y, w, h = cv2.boundingRect(cnt)
-        if w / h > 5:
-            cv2.drawContours(close, [cnt], 0, 255, -1)
-        else:
-            cv2.drawContours(close, [cnt], 0, 0, -1)
-
-    close = cv2.morphologyEx(close, cv2.MORPH_DILATE, None, iterations=2)
-    closey = close.copy()
-
-    kernel_clean = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (np.array(image).shape[1] // 8, 1))
-
-    closey = cv2.erode(closey, kernel_clean, iterations=1)
-
-    closey = cv2.dilate(closey, kernel_clean, iterations=1)
-
-    image_resize = cv2.resize(closey, None, fx=0.25,
-                              fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("Horizontal lines identified", image_resize)
-    cv2.waitKey(0)
-
-    alpha = 0.5
-
-    beta = 1.0 - alpha
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-
-    final_image = cv2.addWeighted(
-        closex, alpha, closey, beta, 0.0)
-
-    final_image = cv2.erode(~final_image, kernel, iterations=2)
-
-    (thresh, final_image) = cv2.threshold(
-        final_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-
-    image_resize = cv2.resize(final_image, None, fx=0.25,
-                              fy=0.25, interpolation=cv2.INTER_LINEAR)
-    cv2.imshow("Final Table", image_resize)
-    cv2.waitKey(0)
-
-    contours, hierarchy = cv2.findContours(
-        final_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    (contours, boundingBoxes) = sort_contours(contours)
-
-    grey_image = cv2.bitwise_not(image)
-
-    i = 0
-    for c in contours:
-        x, y, w, h = cv2.boundingRect(c)
-        if h > 10:
-            i += 1
-            final_new_img = grey_image[y:y+h, x:x+w]
-            cv2.imwrite('images/final' + str(i) + '.png', final_new_img)
+    k = 0
+    for i in ordered_cells:
+        for x in i:
+            if((x[3] > 5) and (x[3] < (average_table_cell_height + 10)) and (x[2] > 5)):
+                k += 1
+                final_new_img = original_image[x[1]:x[1]+x[3], x[0]:x[0]+x[2]]
+                cv2.imwrite('images/final' + str(k).zfill(5) + '.png', final_new_img)
 
 
 def sort_contours(contours):
@@ -157,6 +40,59 @@ def sort_contours(contours):
                                             key=lambda b: b[1][i], reverse=reverse))
 
     return (contours, boundingBoxes)
+
+def sort_cells(cnts):
+    array = []
+
+    for c in cnts:
+        (x, y, w, h) = cv2.boundingRect(c)
+        array.append( (x, y, w, h) )
+
+    array = insertion_sort(array, 1)
+    tmp_array = []
+    i = 0
+    for x in array:
+        if not tmp_array:
+            tmp_list = []
+            tmp_list.append(x)
+            tmp_array.insert(i, tmp_list)
+            i += 1
+        else:
+            found = False
+            for n in tmp_array:
+                for k in n:
+                    if (x[1] > (k[1] - 5) and x[1] < (k[1] + 5)):
+                        n.append(x)
+                        found = True
+                        break
+                    
+                    if(found):
+                        break
+            
+            if not found:
+                tmp_list = []
+                tmp_list.append(x)
+                tmp_array.insert(i, tmp_list)
+                i += 1
+
+    for l in tmp_array:
+        l = insertion_sort(l, 0)
+
+    return tmp_array
+
+    
+
+
+def insertion_sort(arr, axis):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i-1
+        while j >= 0 and key[axis] < arr[j][axis] : 
+                arr[j + 1] = arr[j] 
+                j -= 1
+        arr[j + 1] = key 
+
+    return arr
 
 
 def performCharacterSegmentation():
@@ -286,16 +222,24 @@ def identify_table(filename):
     # cv2.waitKey(0)
 
     mask_image = cv2.bitwise_and(horizontal_lines, vertical_lines)
-    # cv2.imshow("mask2", mask_image)
-    # cv2.waitKey(0)
+    cv2.imshow("mask2", mask_image)
+    cv2.waitKey(0)
 
     mask_image = cv2.bitwise_not(mask_image)
     tmp_image = cv2.bitwise_not(tmp_image)
 
     final_image = cv2.subtract(tmp_image, mask_image)
     # final_image = cv2.subtract(horizontal_lines, final_image)
-    cv2.imshow("sub", final_image)
-    cv2.waitKey(0)
+    # cv2.imshow("sub", final_image)
+    # cv2.waitKey(0)
+
+    mask_image = cv2.bitwise_not(mask_image)
+    final_image = cv2.bitwise_not(final_image)
+
+    segment_table_cells(mask_image, final_image, average_table_cell_height, smallest_width)
+
+    mask_image = cv2.bitwise_not(mask_image)
+    final_image = cv2.bitwise_not(final_image)
 
     final_structure = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     final_image = cv2.erode(final_image, final_structure)
@@ -307,8 +251,8 @@ def identify_table(filename):
     final_structure = cv2.getStructuringElement(cv2.MORPH_RECT, (smallest_width, 1))
     final_image = cv2.dilate(final_image, final_structure, iterations=1)
 
-    cv2.imshow("dilated", final_image)
-    cv2.waitKey(0)
+    # cv2.imshow("dilated", final_image)
+    # cv2.waitKey(0)
 
     edges = cv2.Canny(final_image, 50, 100)
     
@@ -345,6 +289,140 @@ def identify_table(filename):
     average_character_height = average_character_height/number_of_cnts
 
     print(average_character_height)
+    return average_character_height
 
+def character_segmentation(filename, average_character_height):
+    image = cv2.imread(filename)
+    image = cv2.bitwise_not(image)
+    kernel = np.ones((3, 3), np.uint8)
+    image = cv2.erode(image, kernel)
+    image = cv2.dilate(image, kernel)
+
+    colour_image = np.copy(image)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    ret, image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cv2.imshow("Image", image)
+    cv2.waitKey(0)
+
+    height, width = image.shape[:2]
+
+    nlabels, labels, stats, centroids = cv2.connectedComponentsWithStats(image, 4, cv2.CV_32S)
+    sizes = stats[1:, -1]
+    display_image = np.ones((image.shape), np.uint8)
+
+    for i in range(0, nlabels):
+        cv2.rectangle(colour_image, (stats[i][0], stats[i][1]), (stats[i][0] + stats[i][2], stats[i][1] + stats[i][3]), (0, 255, 0), 2)
+
+        final_new_img = image[stats[i][1]:stats[i][1] + stats[i][3], stats[i][0]: stats[i][0] + stats[i][2]]
+
+        h, w = final_new_img.shape[:2]
+
+        if h > (average_character_height - 10) and w < width - 10:
+            display_image[labels == i+1] = 255
+
+            # cv2.imshow("final", final_new_img)
+            # cv2.waitKey(0)
+
+            thinned_image = thinning_algorithm(final_new_img)
+            # cv2.imshow("final", thinned_image)
+            # cv2.waitKey(0)
+
+            segmentation_points = over_character_segmentation(thinned_image, average_character_height)
+
+            current_x = 0
+            idx = 0
+            if len(segmentation_points) > 0:
+                while (current_x < w) and (idx < len(segmentation_points)):
+                    char_image = final_new_img[0:h, current_x:segmentation_points[idx][0]]
+                    cv2.imshow("final", char_image)
+                    cv2.waitKey(0)
+                    current_x += segmentation_points[idx][0]
+                    idx += 1
+            
+            char_image = final_new_img[0:h, current_x:w]
+            cv2.imshow("final", char_image)
+            cv2.waitKey(0) 
+
+# Zhang-Suen thinning algorithm
+def thinning_algorithm(image):
+    thinned_image = image.copy()
+    changing1 = changing2 = 1
+    while changing1 or changing2:
+        changing1 = []
+        rows, columns = thinned_image.shape[:2]
+        for x in range(1, rows - 1):
+            for y in range(1, columns - 1):
+                P2, P3, P4, P5, P6, P7, P8, P9 = n = getNeighbours(x, y, thinned_image)
+                if (thinned_image[x][y] == 255 and 510 <= sum(n) <= 2040 and transitions(n) == 1 and P2 * P4 * P6 == 0 and P4 * P6 * P8 == 0):
+                    changing1.append((x, y))
+        for x, y in changing1:
+            thinned_image[x][y] = 0
+
+        changing2 = []
+        for x in range(1, rows - 1):
+            for y in range(1, columns - 1):
+                P2, P3, P4, P5, P6, P7, P8, P9 = n = getNeighbours(x, y, thinned_image)
+                if (thinned_image[x][y] == 255 and 510 <= sum(n) <= 2040 and transitions(n) == 1 and
+                        P2 * P4 * P8 == 0 and P2 * P6 * P8 == 0):
+                    changing2.append((x, y))
+        for x, y in changing2:
+            thinned_image[x][y] = 0
+    return thinned_image
+
+def getNeighbours(x, y, image):
+    x_1, y_1, x_2, y_2 = x - 1, y - 1, x + 1, y + 1
+    array = [image[x_1][y], image[x_1][y_2], image[x][y_2], image[x_2][y_2], image[x_2][y], image[x_2][y_1],image[x][y_1], image[x_1][y_1]]
+    return array
+
+def transitions(neighbours):
+    n = neighbours + neighbours[0:1]
+    return sum((n1, n2) == (0, 255) for n1, n2 in zip(n, n[1:]))
+
+def over_character_segmentation(image, average_character_height):
+    image_segmented = image.copy()
+    image = np.copy(image_segmented)
+    # cv2.imshow("final", image_segmented)
+    # cv2.waitKey(0)
+    vertical = []
+    rows, cols = image_segmented.shape[:2]
+
+    for x in range(0, cols-1):
+        total = 0
+        for y in range(0, (rows-1)):
+            total += image_segmented[y][x]
+            
+        if total == 0 or total == 255:
+            if not ((x - (int(average_character_height/2))) < 0) and not ((x +  (int(average_character_height/2))) > cols):
+                vertical.append((x,0,x,y))
     
+    i = 0
+    current = len(vertical)
+    while i < (current - 1):
+        diff_1 = float("inf")
+        diff_2 = float("inf")
+        if((i - 1) > 0):
+            diff_1 = vertical[i][0] - vertical[i-1][0]
 
+        if(i + 1 < len(vertical)):
+            diff_2 = vertical[i + 1][0] - vertical[i][0]
+        
+        if(diff_1 < diff_2):
+            if(diff_1 < 10):
+                vertical.pop(i-1)
+                current = len(vertical)
+            else:
+                i += 1
+        elif (diff_2 < diff_1):
+            if(diff_2 < 10):
+                vertical.pop(i)
+                current = len(vertical)
+            else:
+                i += 1   
+
+    return vertical
+    # for x in vertical:
+    #     cv2.line(image,(x[0],0),(x[0],(rows - 1)),(255,0,0),1)
+
+    # cv2.imshow("line", image)
+    # cv2.waitKey(0)
