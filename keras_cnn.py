@@ -59,8 +59,8 @@ def train_cnn():
     Y_test = np_utils.to_categorical(Y_test)
     num_classes = Y_test.shape[1]
 
-    X_train = X_train.reshape(X_train.shape[0], 784,1)
-    X_test = X_test.reshape(X_test.shape[0], 784,1)
+    X_train = X_train.reshape(X_train.shape[0], 1, 28, 28)
+    X_test = X_test.reshape(X_test.shape[0], 1, 28, 28)
 
     model = baseline_model(num_classes)
 
@@ -86,12 +86,12 @@ def train_cnn():
 
 def baseline_model(num_classes):
     model = Sequential()
-    model.add(Reshape((-1,28,28,1), input_shape=(784,)))
+    # model.add(Reshape((28,28,1), input_shape=(784,)))
     # Convolution layer
     # 32 feature functions
     # 5 by 5
     # rectifier activation function
-    model.add(Conv2D(32, (5, 5), activation='relu', input_shape=(28,28,1)))
+    model.add(Conv2D(32, (5, 5), activation='relu', input_shape=(1,28,28)))
     model.add(Dropout(0.05))
     # pooling layer
     # 2 by 2
