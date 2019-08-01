@@ -1,16 +1,19 @@
 from PIL import Image
 # from preprocessing import startImagePreprocessing
+from convertPDFtoJpeg import convertImage
 from pre_processing import process_image, binarization, scaleImage, BorderRemovalAlgorithm
 import cv2
 from segmentation import segment_table_cells, performCharacterSegmentation, identify_table, character_segmentation
 from characterSegmentation import identify_and_extract_characters
-from keras_cnn import train_cnn
+# from keras_cnn import train_cnn
 from recognition import predictCharacters, predict_character, imageCanvasCentering
 import os
 import glob
 
 if __name__ == '__main__':
-    # image_without_mod = cv2.imread("images/exampleB.jpg")
+
+    # convertImage("images/exampleE.pdf")
+    # image_without_mod = cv2.imread("images/exampleE.jpg")
     # scale, image = scaleImage(image_without_mod)
     # cv2.imwrite("images/testing.jpg", image)
     # process_image("images/testing.jpg")
@@ -25,8 +28,8 @@ if __name__ == '__main__':
     for f1 in files:
         if 'final' in f1:
             val = character_segmentation(f1, average_character_height)
-            print(val)
-            data.append(val)
+    #         print(val)
+    #         data.append(val)
     
     
             # data_path2 = os.path.join("images/chars", '*g')

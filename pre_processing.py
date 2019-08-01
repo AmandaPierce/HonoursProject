@@ -2,7 +2,7 @@
 # Basilios Gatos, Ioannis Pratikakis, and Stavros J. Perantonis
 import os
 from PIL import Image
-from pathlib import Path
+# from pathlib import Path
 import cv2
 import numpy as np
 from scipy.signal import gaussian, convolve2d
@@ -14,6 +14,9 @@ import math
 
 def process_image(filename):
     original_image = cv2.imread(filename)
+
+    cv2.imshow("Original image", original_image)
+    cv2.waitKey(0)
 
     morph = original_image.copy()
 
@@ -33,10 +36,14 @@ def process_image(filename):
 
     image_channels = np.concatenate((image_channels[0], image_channels[1], image_channels[2]), axis=2)
 
+    cv2.imshow("Blurred image", image_channels)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows() 
+
 
     im = imageSkewNormalization(filename, image_channels)
 
-    cv2.imwrite("images/testing.jpg", im)
+    cv2.imwrite(filename, im)
 
     #cv2.imwrite(filename, im)
 
@@ -175,16 +182,16 @@ def combining_forground_and_background(og_image, bg_image, thresh_image):
     rows, cols = og_image.shape
     combined = og_image.copy()
 
-    delta = 0
-    top = 0
-    bottom = 0
+    delta = 0.0
+    top = 0.0
+    bottom = 0.0
 
     for i in range(rows):
             for j in range(cols):
                 if(og_image[i,j] > bg_image[i,j]):
-                    top -= og_image[i,j] - bg_image[i,j]
+                    top -= float(og_image[i,j]) - float(bg_image[i,j])
                 else:
-                    top += (bg_image[i,j] - og_image[i,j])
+                    top += (float(bg_image[i,j]) - float(og_image[i,j]))
                 
                 bottom += thresh_image[i,j]
     
@@ -194,9 +201,9 @@ def combining_forground_and_background(og_image, bg_image, thresh_image):
         for j in range(cols):
 
             if(og_image[i,j] > bg_image[i,j]):
-                val = 0
+                val = 0.0
             else:
-                val = (bg_image[i,j] - og_image[i,j])/255
+                val = (float(bg_image[i,j]) - float(og_image[i,j]))/255.0
 
             if(val > (delta*0.6)):
                 combined[i,j] = 255
@@ -216,6 +223,7 @@ def binarization(filename):
     bg_image = background_estimation(image, thresh_image)
     
     final_image = combining_forground_and_background(image, bg_image, thresh_image)
+
     final_image = cv2.bitwise_not(final_image)
     cv2.imwrite("images/testing.jpg", final_image)
     # cv2.imshow("The image", final_image)
@@ -223,16 +231,20 @@ def binarization(filename):
 
 
 def scaleImage(image, dimension=2048):
+    
+    # cv2.imshow("scaled image", image)
+    # cv2.waitKey(0)
 
     # Gets the width and height of the image
     height, width = image.shape[:2]
+
 
     # Return if scale is already 1 or smaller
     if max(width, height) <= dimension:
         return 1.0, image
     else:
         # Get scale value and rescale image
-        scale = 1.0 * (dimension / max(width, height))
+        scale = 1.0 * float(dimension)/float((max(width, height)))
         scaled_image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
         return scale, scaled_image
 
@@ -263,7 +275,7 @@ def BorderRemovalAlgorithm(input_path):
             nzCount = cv2.countNonZero(segment_image)
             section_height, section_width = segment_image.shape[:2]
             totalPixels = section_width * section_height
-            ratio = nzCount/totalPixels
+            ratio = float(nzCount)/float(totalPixels)
             # cv2.imshow("Segmented image", segment_image)
             # cv2.waitKey(0)
             print(ratio)
@@ -295,7 +307,7 @@ def BorderRemovalAlgorithm(input_path):
             nzCount = cv2.countNonZero(segment_image)
             section_height, section_width = segment_image.shape[:2]
             totalPixels = section_width * section_height
-            ratio = nzCount/totalPixels
+            ratio = float(nzCount)/float(totalPixels)
             print(ratio)
             # cv2.imshow("Segmented image", segment_image)
             # cv2.waitKey(0)
@@ -316,9 +328,9 @@ def BorderRemovalAlgorithm(input_path):
         x += segment_x
         y = 0
 
-    cv2.imshow("AAA", image)
+    # cv2.imshow("AAA", image)
     cv2.imwrite("images/testing.png", image)
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
 
     # while x < (third_width * 2):
     #     segment_image = image[0:height, x:x + segment].copy()

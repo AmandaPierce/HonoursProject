@@ -175,16 +175,16 @@ def identify_table(filename):
     cnts, _ = cv2.findContours(mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     (cnts, _) = sort_contours(cnts)
 
-    average_table_cell_height = 0
-    average_table_cell_width = 0
+    average_table_cell_height = 0.0
+    average_table_cell_width = 0.0
     smallest_width = width
 
     i = 0
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
-        if h > 10 and h < height/3 and w > 10 and w < width:
-            average_table_cell_height += h
-            average_table_cell_width += w
+        if h > 10 and h < int(height/3) and w > 10 and w < width:
+            average_table_cell_height += float(h)
+            average_table_cell_width += float(w)
             if w < smallest_width:
                 smallest_width = w
             i += 1
@@ -223,8 +223,8 @@ def identify_table(filename):
     # cv2.waitKey(0)
 
     mask_image = cv2.bitwise_and(horizontal_lines, vertical_lines)
-    cv2.imshow("mask2", mask_image)
-    cv2.waitKey(0)
+    # cv2.imshow("mask2", mask_image)
+    # cv2.waitKey(0)
 
     mask_image = cv2.bitwise_not(mask_image)
     tmp_image = cv2.bitwise_not(tmp_image)
@@ -282,12 +282,12 @@ def identify_table(filename):
 
         (top_l, top_r, bottom_r, bottom_l) = box
 
-        dist = math.sqrt((top_r[0] - bottom_r[0])**2 + (top_r[1] - bottom_r[1])**2)
+        dist = float(math.sqrt((top_r[0] - bottom_r[0])**2 + (top_r[1] - bottom_r[1])**2))
 
         number_of_cnts += 1
         average_character_height += dist
     
-    average_character_height = average_character_height/number_of_cnts
+    average_character_height = float(average_character_height)/float(number_of_cnts)
 
     print(average_character_height)
     return average_character_height
@@ -348,15 +348,15 @@ def character_segmentation(filename, average_character_height):
 
         h, w = final_new_img.shape[:2]
 
-        if h > (average_character_height/2 - 5) and w < width - 15 and w > 2:
+        if h > (float(average_character_height/2) - 5) and w < width - 15 and w > 5:
             display_image[labels == i+1] = 255
 
             # cv2.imshow("final", final_new_img)
             # cv2.waitKey(0)
     
             thinned_image = thinning_algorithm(final_new_img)
-            # cv2.imshow("final", thinned_image)
-            # cv2.waitKey(0)
+            cv2.imshow("final", thinned_image)
+            cv2.waitKey(0)
 
             segmentation_points = over_character_segmentation(thinned_image, average_character_height)
             # print (segmentation_points)
@@ -375,43 +375,73 @@ def character_segmentation(filename, average_character_height):
                 char_image = image_canvas_centering(char_image)
                 predicted_char = predict_character(char_image)
                 tmp_str += str(predicted_char)
-                # cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
-                current_x += segmentation_points[idx][0]
+                cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
+                current_x = segmentation_points[idx][0]
                 idx += 1
                 position += 1
             elif len(segmentation_points) > 0:
-                while (current_x < w) and (idx < (len(segmentation_points) - 1)):
-                    # print (w)
-                    # print (current_x)
-                    char_image = final_new_img[0:h, current_x:segmentation_points[idx][0]]
-                    # print(segmentation_points[idx][0])
-                    char_image = cv2.bitwise_not(char_image)
-                    # kernel = np.zeros((3, 3), np.uint8)
-                    # char_image = cv2.dilate(char_image, kernel, iterations=2)
-                    # cv2.imshow("AAAA", char_image)
-                    # cv2.waitKey(0)
-                    char_image = image_canvas_centering(char_image)
-                    # cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
-                    predicted_char = predict_character(char_image)
-                    tmp_str += str(predicted_char)
-                    # cv2.imshow("final", char_image)
-                    # cv2.waitKey(0)
-                    current_x += segmentation_points[idx][0]
-                    idx += 1
-                    position += 1
+
+                if ((len(segmentation_points) + 1)%2==0):
+                    # print("A")
+                    while (current_x < w) and (idx < (len(segmentation_points))):
+                        # print (w)
+                        # print (current_x)
+                        char_image = final_new_img[0:h, current_x:segmentation_points[idx][0]]
+                        # print(segmentation_points[idx][0])
+                        char_image = cv2.bitwise_not(char_image)
+                        # kernel = np.zeros((3, 3), np.uint8)
+                        # char_image = cv2.dilate(char_image, kernel, iterations=2)
+                        # cv2.imshow("AAAA", char_image)
+                        # cv2.waitKey(0)
+                        char_image = image_canvas_centering(char_image)
+                        cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
+                        predicted_char = predict_character(char_image)
+                        tmp_str += str(predicted_char)
+                        # cv2.imshow("final", char_image)
+                        # cv2.waitKey(0)
+                        # print(predicted_char)
+                        current_x = segmentation_points[idx][0]
+                        idx += 1
+                        position += 1
+                elif ((len(segmentation_points) + 1)%2 != 0):
+                    while (current_x < w) and (idx < (len(segmentation_points))):
+                        # print (w)
+                        # print (current_x)
+                        char_image = final_new_img[0:h, current_x:segmentation_points[idx][0]]
+                        # print(segmentation_points[idx][0])
+                        char_image = cv2.bitwise_not(char_image)
+                        # kernel = np.zeros((3, 3), np.uint8)
+                        # char_image = cv2.dilate(char_image, kernel, iterations=2)
+                        # cv2.imshow("AAAA", char_image)
+                        # cv2.waitKey(0)
+                        char_image = image_canvas_centering(char_image)
+                        cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
+                        predicted_char = predict_character(char_image)
+                        tmp_str += str(predicted_char)
+                        # cv2.imshow("final", char_image)
+                        # cv2.waitKey(0)
+                        # print(predicted_char)
+                        current_x = segmentation_points[idx][0]
+                        idx += 1
+                        position += 1
             
+            # print (current_x)
             char_image = final_new_img[0:h, current_x:w]
             char_image = cv2.bitwise_not(char_image)
             char_image = image_canvas_centering(char_image)
             predicted_char = predict_character(char_image)
             tmp_str += str(predicted_char)
-            # cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
+            cv2.imwrite("images/chars/" + filename[7:-4] + "_" + str(position).zfill(3) + ".png", char_image)
+            # cv2.imshow("final", char_image)
+            # cv2.waitKey(0)
+            # print(predicted_char)
             # kernel = np.zeros((3, 1), np.uint8)
             # char_image = cv2.dilate(char_image, kernel)
             # cv2.imshow("final", char_image)
             # cv2.waitKey(0)
             position += 1
     
+    # print(tmp_str)
     return tmp_str
 
 # Zhang-Suen thinning algorithm
@@ -438,6 +468,8 @@ def thinning_algorithm(image):
                     changing2.append((x, y))
         for x, y in changing2:
             thinned_image[x][y] = 0
+
+    cv2.imshow("thinned", thinned_image)
     return thinned_image
 
 def getNeighbours(x, y, image):
