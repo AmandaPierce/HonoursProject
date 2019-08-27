@@ -6,12 +6,13 @@ import cv2
 from segmentation import segment_table_cells, performCharacterSegmentation, identify_table, character_segmentation
 from characterSegmentation import identify_and_extract_characters
 # from keras_cnn import train_cnn
+from character_segmentation import perform_character_segmentation
 from recognition import predictCharacters, predict_character, imageCanvasCentering
 import os
 import glob
 
 if __name__ == '__main__':
-
+    perform_character_segmentation("images/final00043.png")
     # convertImage("images/exampleE.pdf")
     # image_without_mod = cv2.imread("images/exampleE.jpg")
     # scale, image = scaleImage(image_without_mod)
@@ -19,15 +20,15 @@ if __name__ == '__main__':
     # process_image("images/testing.jpg")
     # binarization("images/testing.jpg")
     # BorderRemovalAlgorithm("images/testing.jpg")
-    average_character_height = identify_table("images/testing.png")
-    data_path = os.path.join("images/", '*g')
-    files = glob.glob(data_path)
-    final_array = []
-    data = []
-    curr = 0
-    for f1 in files:
-        if 'final' in f1:
-            val = character_segmentation(f1, average_character_height)
+    # average_character_height = identify_table("images/testing.png")
+    # data_path = os.path.join("images/", '*g')
+    # files = glob.glob(data_path)
+    # final_array = []
+    # data = []
+    # curr = 0
+    # for f1 in files:
+    #     if 'final' in f1:
+    #         val = character_segmentation(f1, average_character_height)
     #         print(val)
     #         data.append(val)
     
